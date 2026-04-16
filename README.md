@@ -103,6 +103,18 @@ Default seeded credentials in the bundled world:
 - Username: `admin`
 - Password: `password`
 
+### Local Config Overrides
+
+Keep local deployment settings out of `_datafiles/config.yaml` by copying
+`_datafiles/world/default/config-overrides.example.yaml` to
+`_datafiles/world/default/config-overrides.yaml`.
+
+GoMud loads `_datafiles/config.yaml` first, then overlays values from the
+active data folder's `config-overrides.yaml`. That local override file is
+ignored by git, so it is a better place for hostnames, local ports, certificate
+paths, and private server settings. You can also set `CONFIG_PATH` to load an
+override file from another location.
+
 ---
 
 ## User Support

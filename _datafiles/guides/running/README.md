@@ -28,3 +28,22 @@ Or you can just build the binary if you prefer:
 Or if you have docker installed:
 
 > `docker compose up --build`
+
+
+# Local Config Overrides
+
+For local server settings, copy:
+
+> `_datafiles/world/default/config-overrides.example.yaml`
+
+to:
+
+> `_datafiles/world/default/config-overrides.yaml`
+
+GoMud loads `_datafiles/config.yaml` first, then overlays values from the active
+data folder's `config-overrides.yaml`. The local override file is ignored by
+git, so use it for hostnames, ports, certificate paths, and other deployment
+settings that should not be committed.
+
+You can also set `CONFIG_PATH=/path/to/config-overrides.yaml` to load overrides
+from another location.
