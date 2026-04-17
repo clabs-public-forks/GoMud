@@ -32,6 +32,60 @@ func (p testWebPlugin) WebRequest(r *http.Request) (string, map[string]any, bool
 	return p.html, p.data, p.ok
 }
 
+func TestIsAllowedWebSocketOrigin(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		origin  string
+		allowed bool
+	}{
+		{
+			name:    "request host is allowed",
+			host:    "play.example.com",
+			origin:  "https://play.example.com",
+			allowed: true,
+		},
+		{
+			name:    "same host different port is rejected",
+			host:    "localhost:80",
+			origin:  "http://localhost:3000",
+			allowed: false,
+		},
+		{
+			name:    "exact host and port is allowed",
+			host:    "localhost:3000",
+			origin:  "http://localhost:3000",
+			allowed: true,
+		},
+		{
+			name:    "foreign origin is rejected",
+			host:    "localhost:80",
+			origin:  "https://evil.example",
+			allowed: false,
+		},
+		{
+			name:    "missing origin is allowed",
+			host:    "localhost:80",
+			origin:  "",
+			allowed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://"+tt.host+"/ws", nil)
+			req.Host = tt.host
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+
+			if got := isAllowedWebSocketOrigin(req); got != tt.allowed {
+				t.Fatalf("isAllowedWebSocketOrigin() = %v, want %v", got, tt.allowed)
+			}
+		})
+	}
+}
+
 func TestOnlineTemplateEscapesCharacterName(t *testing.T) {
 	publicHTML := filepath.Clean(filepath.Join("..", "..", "_datafiles", "html", "public"))
 	tmpl, err := htemplate.New("online.html").Funcs(funcMap).ParseFiles(
