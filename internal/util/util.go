@@ -26,6 +26,11 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+const (
+	defaultFilePerm os.FileMode = 0o644
+	privateFilePerm os.FileMode = 0o600
+)
+
 var (
 	turnCount    uint64 = 0
 	roundCount   uint64 = RoundCountMinimum
@@ -658,12 +663,16 @@ func FormatDiceRoll(attacks int, dCount int, dSides int, bonus int, buffOnCrit [
 // This is to lessen the risk of a partial write being interrupted and corrupting the file
 // due to power loss etc.
 func SafeSave(path string, data []byte) error {
+	return SafeSaveWithMode(path, data, defaultFilePerm)
+}
+
+func SafeSaveWithMode(path string, data []byte, mode os.FileMode) error {
 
 	path = filepath.FromSlash(path)
 
 	safePath := path + `.new`
 
-	if err := os.WriteFile(safePath, data, 0777); err != nil {
+	if err := os.WriteFile(safePath, data, mode); err != nil {
 		return err
 	}
 
@@ -674,19 +683,31 @@ func SafeSave(path string, data []byte) error {
 		return err
 	}
 
+	if err := os.Chmod(path, mode); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Basic save wrapper
 func Save(path string, data []byte, doSafe ...bool) error {
+	return SaveWithMode(path, data, defaultFilePerm, doSafe...)
+}
+
+func SaveWithMode(path string, data []byte, mode os.FileMode, doSafe ...bool) error {
 
 	path = filepath.FromSlash(path)
 
 	if len(doSafe) > 0 && doSafe[0] {
-		return SafeSave(path, data)
+		return SafeSaveWithMode(path, data, mode)
 	}
 
-	if err := os.WriteFile(path, data, 0777); err != nil {
+	if err := os.WriteFile(path, data, mode); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(path, mode); err != nil {
 		return err
 	}
 

@@ -130,7 +130,7 @@ Options for controlling file save behavior, supporting safe atomic writes.
 
 ### File Safety
 - **Directory Creation**: Ensures target directories exist
-- **Permission Handling**: Appropriate file permissions (0777 for data files)
+- **Permission Handling**: Appropriate file permissions (0644 for data files, 0755 for directories)
 - **Error Recovery**: Graceful handling of filesystem errors
 - **Consistency**: Maintains file system consistency during operations
 

@@ -41,6 +41,11 @@ const (
 	SaveCareful SaveOption = iota // Save a backup and rename vs. just overwriting
 )
 
+const (
+	saveDirPerm  os.FileMode = 0o755
+	saveFilePerm os.FileMode = 0o644
+)
+
 func LoadFlatFile[T LoadableSimple](path string) (T, error) {
 
 	var loaded T
@@ -220,7 +225,9 @@ func SaveFlatFile[T LoadableSimple](basePath string, dataUnit T, saveOptions ...
 		return errors.New(fmt.Sprint(`SaveFlatFile`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, `unsupported file type`))
 	}
 
-	os.MkdirAll(filepath.Dir(path), os.ModePerm)
+	if err := os.MkdirAll(filepath.Dir(path), saveDirPerm); err != nil {
+		return errors.New(fmt.Sprint(`SaveFlatFile`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
+	}
 
 	bytes, err := yaml.Marshal(dataUnit)
 	if err != nil {
@@ -235,7 +242,7 @@ func SaveFlatFile[T LoadableSimple](basePath string, dataUnit T, saveOptions ...
 	//
 	// write to .new suffix in case of power loss etc.
 	//
-	if err := os.WriteFile(saveFilePath, bytes, 0777); err != nil {
+	if err := os.WriteFile(saveFilePath, bytes, saveFilePerm); err != nil {
 		return errors.New(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
 	}
 
@@ -309,7 +316,7 @@ func SaveAllFlatFiles[K comparable, T Loadable[K]](basePath string, data map[K]T
 				//
 				// write to .new suffix in case of power loss etc.
 				//
-				if err := os.WriteFile(saveFilePath, bytes, 0777); err != nil {
+				if err := os.WriteFile(saveFilePath, bytes, saveFilePerm); err != nil {
 					panic(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
 				}
 

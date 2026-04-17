@@ -66,7 +66,7 @@ func SaveAlts(userId int, alts []Character) bool {
 		saveFilePath += `.new`
 	}
 
-	err = os.WriteFile(saveFilePath, data, 0777)
+	err = os.WriteFile(saveFilePath, data, 0o600)
 	if err != nil {
 		mudlog.Error("SaveAlts", "error", err.Error())
 		return false

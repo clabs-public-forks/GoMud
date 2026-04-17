@@ -58,7 +58,9 @@ func CreateNewMobFile(newMobInfo Mob, copyScript string) (MobId, error) {
 	if copyScript != `` {
 
 		newScriptPath := newMobInfo.GetScriptPath()
-		os.MkdirAll(filepath.Dir(newScriptPath), os.ModePerm)
+		if err := os.MkdirAll(filepath.Dir(newScriptPath), 0o755); err != nil {
+			return 0, err
+		}
 
 		fileloader.CopyFileContents(
 			util.FilePath(`_datafiles/sample-scripts/mobs/`+copyScript),

@@ -313,7 +313,7 @@ func SetVal(propertyPath string, newVal string) error {
 	}
 
 	overridePath := overridePath()
-	if err := util.Save(overridePath, writeBytes, bool(configData.FilePaths.CarefulSaveFiles)); err != nil {
+	if err := util.SaveWithMode(overridePath, writeBytes, 0o600, bool(configData.FilePaths.CarefulSaveFiles)); err != nil {
 		return err
 	}
 

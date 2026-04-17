@@ -846,6 +846,83 @@ func TestSave(t *testing.T) {
 	if !bytes.Equal(contents, data) {
 		t.Errorf("saved file mismatch: got %q, want %q", contents, data)
 	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms&0o022 != 0 {
+		t.Fatalf("Save created a group/world-writable file: %o", gotPerms)
+	}
+}
+
+func TestSaveWithMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+	data := []byte("testing private save")
+
+	err := SaveWithMode(path, data, 0o600)
+	if err != nil {
+		t.Fatalf("SaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms&0o077 != 0 {
+		t.Fatalf("SaveWithMode created a non-private file: %o", gotPerms)
+	}
+}
+
+func TestSaveWithModeReplacesExistingPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+
+	if err := os.WriteFile(path, []byte("old"), 0o666); err != nil {
+		t.Fatalf("unable to create existing file: %v", err)
+	}
+
+	if err := os.Chmod(path, 0o666); err != nil {
+		t.Fatalf("unable to widen file permissions: %v", err)
+	}
+
+	if err := SaveWithMode(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("SaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
+		t.Fatalf("SaveWithMode kept insecure permissions: %o", gotPerms)
+	}
+}
+
+func TestSafeSaveWithModeReplacesExistingPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+
+	if err := os.WriteFile(path, []byte("old"), 0o666); err != nil {
+		t.Fatalf("unable to create existing file: %v", err)
+	}
+
+	if err := os.Chmod(path, 0o666); err != nil {
+		t.Fatalf("unable to widen file permissions: %v", err)
+	}
+
+	if err := SafeSaveWithMode(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("SafeSaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
+		t.Fatalf("SafeSaveWithMode kept insecure permissions: %o", gotPerms)
+	}
 }
 
 // TestFilePath just ensures the slash normalization works as expected.
