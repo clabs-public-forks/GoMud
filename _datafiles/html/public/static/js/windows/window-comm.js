@@ -166,7 +166,7 @@
     // -----------------------------------------------------------------------
     // VirtualWindow instance
     // -----------------------------------------------------------------------
-    const win = new VirtualWindow('Comm', {
+    const win = new VirtualWindow('Communications', {
         dock:          'right',
         defaultDocked: true,
         dockedHeight:  500,
