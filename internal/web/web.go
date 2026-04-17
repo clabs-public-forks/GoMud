@@ -4,15 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	htemplate "html/template"
 	"log"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/GoMudEngine/GoMud/internal/configs"
@@ -26,9 +27,7 @@ var (
 	httpsServer *http.Server
 
 	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
+		CheckOrigin: isAllowedWebSocketOrigin,
 	}
 
 	httpRoot = ``
@@ -199,7 +198,7 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	// Add the final (actual) file
 
 	// Parse
-	tmpl := template.New(filepath.Base(fullPath)).Funcs(funcMap)
+	tmpl := htemplate.New(filepath.Base(fullPath)).Funcs(funcMap)
 
 	if pluginHtml == `` {
 		templateFiles = append(templateFiles, fullPath)
@@ -226,6 +225,47 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 		mudlog.Error("HTML ERROR", "action", "Execute", "error", err)
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 	}
+}
+
+func isAllowedWebSocketOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	if originURL.Scheme != "http" && originURL.Scheme != "https" {
+		return false
+	}
+
+	originHost := strings.ToLower(originURL.Host)
+	if originHost == "" {
+		return false
+	}
+
+	if _, ok := allowedWebSocketHosts(r)[originHost]; ok {
+		return true
+	}
+
+	return false
+}
+
+func allowedWebSocketHosts(r *http.Request) map[string]struct{} {
+	allowedHosts := map[string]struct{}{}
+
+	if requestHost := strings.ToLower(r.Host); requestHost != "" {
+		allowedHosts[requestHost] = struct{}{}
+	}
+
+	if configuredHost := strings.ToLower(configs.GetFilePathsConfig().WebDomain.String()); configuredHost != "" {
+		allowedHosts[configuredHost] = struct{}{}
+	}
+
+	return allowedHosts
 }
 
 func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {

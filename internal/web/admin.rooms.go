@@ -2,10 +2,12 @@ package web
 
 import (
 	"fmt"
+	"html"
+	htemplate "html/template"
 	"net/http"
 	"sort"
 	"strconv"
-	"text/template"
+	"strings"
 
 	"github.com/GoMudEngine/GoMud/internal/buffs"
 	"github.com/GoMudEngine/GoMud/internal/characters"
@@ -25,7 +27,7 @@ type ZoneDetails struct {
 
 func roomsIndex(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/rooms/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
+	tmpl, err := htemplate.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/rooms/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -45,6 +47,7 @@ func roomsIndex(w http.ResponseWriter, r *http.Request) {
 		IsSkillTraining bool
 		HasContainer    bool
 		IsPvp           bool
+		DataContent     htemplate.HTMLAttr
 	}
 
 	allZones := []ZoneDetails{}
@@ -102,6 +105,18 @@ func roomsIndex(w http.ResponseWriter, r *http.Request) {
 				IsSkillTraining: len(room.SkillTraining) > 0,
 				HasContainer:    hasContainer,
 				IsPvp:           room.IsPvp(),
+				DataContent: adminRoomDataContent(shortRoomInfo{
+					RoomId:          room.RoomId,
+					RoomZone:        room.Zone,
+					ZoneRoot:        rootRoomId == room.RoomId,
+					RoomTitle:       room.Title,
+					IsBank:          room.IsBank,
+					IsStorage:       room.IsStorage,
+					IsCharacterRoom: room.IsCharacterRoom,
+					IsSkillTraining: len(room.SkillTraining) > 0,
+					HasContainer:    hasContainer,
+					IsPvp:           room.IsPvp(),
+				}),
 			})
 		}
 	}
@@ -142,9 +157,56 @@ func roomsIndex(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func adminRoomDataContent(roomInfo struct {
+	RoomId          int
+	RoomZone        string
+	ZoneRoot        bool
+	RoomTitle       string
+	IsBank          bool
+	IsStorage       bool
+	IsCharacterRoom bool
+	IsSkillTraining bool
+	HasContainer    bool
+	IsPvp           bool
+	DataContent     htemplate.HTMLAttr
+}) htemplate.HTMLAttr {
+	var markup strings.Builder
+
+	fmt.Fprintf(&markup, "<span class='badge badge-secondary'> %d </span> ", roomInfo.RoomId)
+	fmt.Fprintf(&markup, "<span class='badge badge-pill badge-warning'>%s</span> ", html.EscapeString(roomInfo.RoomZone))
+
+	if roomInfo.ZoneRoot {
+		markup.WriteString("<span class='badge badge-pill badge-danger'>root</span> ")
+	}
+
+	titleClass := "font-weight-bold"
+	if roomInfo.IsPvp {
+		titleClass += " text-danger"
+	}
+	fmt.Fprintf(&markup, "<span class='%s'>%s</span>", titleClass, html.EscapeString(roomInfo.RoomTitle))
+
+	if roomInfo.IsBank {
+		markup.WriteString(" <span class='badge badge-pill badge-success'>bank</span>")
+	}
+	if roomInfo.IsStorage {
+		markup.WriteString(" <span class='badge badge-pill badge-dark'>storage</span>")
+	}
+	if roomInfo.IsCharacterRoom {
+		markup.WriteString(" <span class='badge badge-pill badge-danger'>alt char</span>")
+	}
+	if roomInfo.IsSkillTraining {
+		markup.WriteString(" <span class='badge badge-pill badge-primary'>training</span>")
+	}
+	if roomInfo.HasContainer {
+		markup.WriteString(" <span class='badge badge-pill badge-info'>container</span>")
+	}
+
+	return htemplate.HTMLAttr(`data-content="` + markup.String() + `"`)
+}
+
 func roomData(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("room.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/rooms/room.data.html")
+	tmpl, err := htemplate.New("room.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/rooms/room.data.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}

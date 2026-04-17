@@ -1,10 +1,10 @@
 package web
 
 import (
+	htemplate "html/template"
 	"net/http"
 	"sort"
 	"strconv"
-	"text/template"
 
 	"github.com/GoMudEngine/GoMud/internal/buffs"
 	"github.com/GoMudEngine/GoMud/internal/characters"
@@ -15,7 +15,7 @@ import (
 
 func racesIndex(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/races/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
+	tmpl, err := htemplate.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/races/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -40,7 +40,7 @@ func racesIndex(w http.ResponseWriter, r *http.Request) {
 
 func raceData(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("race.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/races/race.data.html")
+	tmpl, err := htemplate.New("race.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/races/race.data.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}

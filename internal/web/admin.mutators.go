@@ -1,9 +1,9 @@
 package web
 
 import (
+	htemplate "html/template"
 	"net/http"
 	"sort"
-	"text/template"
 
 	"github.com/GoMudEngine/GoMud/internal/buffs"
 	"github.com/GoMudEngine/GoMud/internal/colorpatterns"
@@ -14,7 +14,7 @@ import (
 
 func mutatorsIndex(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/mutators/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
+	tmpl, err := htemplate.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/mutators/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -39,7 +39,7 @@ func mutatorsIndex(w http.ResponseWriter, r *http.Request) {
 
 func mutatorData(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("mutator.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/mutators/mutator.data.html")
+	tmpl, err := htemplate.New("mutator.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/mutators/mutator.data.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}

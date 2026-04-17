@@ -14,7 +14,7 @@
                             <option value="">Select an Race to View</option>
                             <option value="0">Add New Race</option>
                             {{range $index, $raceInfo := .Races}}
-                                <option value="{{ $raceInfo.RaceId }}">{{ rpad 7 $raceInfo.RaceId "&nbsp;&nbsp;" }} {{ $raceInfo.Name }}</option>
+                                <option value="{{ $raceInfo.RaceId }}">{{ rpadhtml 7 $raceInfo.RaceId "&nbsp;&nbsp;" }} {{ $raceInfo.Name }}</option>
                             {{end}}
                         </select>
                     </div>
