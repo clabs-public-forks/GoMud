@@ -14,6 +14,7 @@
 - Reusable game features live under `modules/`; bundled world data, HTML, localization, and sample scripts live under `_datafiles/`.
 - Generated module wiring is handled by `cmd/generate/module-imports.go`.
 - CI and contributor workflow docs live in `.github/`.
+- `ai-context/*.md` is supplemental architecture/background context; treat code, config, and Makefile targets as the source of truth.
 
 ## Build, Test, and Run
 
