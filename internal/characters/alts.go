@@ -61,29 +61,13 @@ func SaveAlts(userId int, alts []Character) bool {
 
 	path := util.FilePath(string(configs.GetFilePathsConfig().DataFiles), `/users/`, strconv.Itoa(userId)+`.alts.yaml`)
 
-	saveFilePath := path
-	if carefulSave { // careful save first saves a {filename}.new file
-		saveFilePath += `.new`
-	}
-
-	err = os.WriteFile(saveFilePath, data, 0o600)
-	if err != nil {
+	if err = util.SaveWithMode(path, data, 0o600, bool(carefulSave)); err != nil {
 		mudlog.Error("SaveAlts", "error", err.Error())
 		return false
 	}
 	fileWritten = true
 	if carefulSave {
 		tmpSaved = true
-	}
-
-	if carefulSave {
-		//
-		// Once the file is written, rename it to remove the .new suffix and overwrite the old file
-		//
-		if err := os.Rename(saveFilePath, path); err != nil {
-			mudlog.Error("SaveAlts", "error", err.Error())
-			return false
-		}
 		tmpCopied = true
 	}
 
