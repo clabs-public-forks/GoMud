@@ -3,6 +3,8 @@
 ## Goals
 
 - Make the smallest correct change that satisfies the task.
+- Keep PRs as small as practical to make review easier.
+- Split Go code changes into a separate PR when they are not required for the task at hand.
 - Preserve existing project conventions unless there is a clear reason to change them.
 - Keep durable repo conventions here; put repeatable workflows in `.agents/`.
 
