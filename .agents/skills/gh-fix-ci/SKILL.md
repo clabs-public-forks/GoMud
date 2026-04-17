@@ -8,6 +8,8 @@ description: "Use when a user asks to debug or fix failing GitHub PR checks that
 
 ## Overview
 
+Forked from: <https://github.com/openai/skills/tree/main/skills/.curated/gh-fix-ci>
+
 Use this skill when the task is specifically about failing GitHub Actions checks on a pull request. This workflow is hybrid by design:
 
 - Use GitHub PR metadata, changed files, and review context when available.
