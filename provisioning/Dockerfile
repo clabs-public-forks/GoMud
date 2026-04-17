@@ -1,6 +1,6 @@
 # check=skip=InvalidDefaultArgInFrom
 ARG GO_VERSION
-FROM golang:${GO_VERSION}-bookworm AS builder
+FROM golang:${GO_VERSION} AS builder
 
 ARG BIN=go-mud-server
 ENV BIN=${BIN}
