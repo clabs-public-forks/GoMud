@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,10 @@ import (
 // Because turnCount, roundCount and timeTrackers are package-level globals,
 // it can be good practice to reset them in a TestMain or individually in tests.
 // But for simplicity, each test that needs a reset can just do so in the test body.
+
+func supportsPOSIXFileModes() bool {
+	return runtime.GOOS != "windows"
+}
 
 func TestLockMud(t *testing.T) {
 	// Basic concurrency test to make sure LockMud / UnlockMud do not panic
@@ -851,7 +856,8 @@ func TestSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to stat saved file: %v", err)
 	}
-	if gotPerms := info.Mode().Perm(); gotPerms&0o022 != 0 {
+	if supportsPOSIXFileModes() && info.Mode().Perm()&0o022 != 0 {
+		gotPerms := info.Mode().Perm()
 		t.Fatalf("Save created a group/world-writable file: %o", gotPerms)
 	}
 }
@@ -869,6 +875,9 @@ func TestSaveWithMode(t *testing.T) {
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
 	}
 	if gotPerms := info.Mode().Perm(); gotPerms&0o077 != 0 {
 		t.Fatalf("SaveWithMode created a non-private file: %o", gotPerms)
@@ -895,6 +904,9 @@ func TestSaveWithModeReplacesExistingPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to stat saved file: %v", err)
 	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
+	}
 	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
 		t.Fatalf("SaveWithMode kept insecure permissions: %o", gotPerms)
 	}
@@ -919,6 +931,9 @@ func TestSafeSaveWithModeReplacesExistingPermissions(t *testing.T) {
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
 	}
 	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
 		t.Fatalf("SafeSaveWithMode kept insecure permissions: %o", gotPerms)

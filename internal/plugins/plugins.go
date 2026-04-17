@@ -361,7 +361,7 @@ func (p *Plugin) WriteBytes(identifier string, bytes []byte) error {
 		}
 	}
 
-	if err := os.WriteFile(fullPath, bytes, 0o644); err != nil {
+	if err := util.SaveWithMode(fullPath, bytes, 0o644); err != nil {
 		mudlog.Error(`plugin.WriteBytes`, `name`, p.name, `path`, fullPath, `error`, err)
 		return err
 	}
