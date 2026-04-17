@@ -1,0 +1,96 @@
+{{template "header" .}}
+{{$status := .httpsStatus}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">HTTPS Status</h1>
+            <p class="text-muted">{{$status.Summary}}</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Current Mode</div>
+                <div class="card-body">
+                    <p><strong>Mode:</strong> {{$status.Mode}}</p>
+                    <p><strong>Hostname:</strong> {{if $status.Host}}{{$status.Host}}{{else}}Not set{{end}}</p>
+                    <p><strong>HTTP Port:</strong> {{$status.HttpPort}}</p>
+                    <p><strong>HTTPS Port:</strong> {{$status.HttpsPort}}</p>
+                    <p><strong>Redirect Enabled:</strong> {{$status.RedirectEnabled}}</p>
+                    {{if $status.CacheDir}}<p><strong>Cache Directory:</strong> {{$status.CacheDir}}</p>{{end}}
+                    {{if $status.CertFile}}<p><strong>Certificate File:</strong> {{$status.CertFile}}</p>{{end}}
+                    {{if $status.KeyFile}}<p><strong>Private Key File:</strong> {{$status.KeyFile}}</p>{{end}}
+                    <p><strong>Email Configured:</strong> {{$status.EmailConfigured}}</p>
+                    {{if $status.Issuer}}<p><strong>Issuer:</strong> {{$status.Issuer}}</p>{{end}}
+                    {{if $status.ExpiresAt}}<p><strong>Expires At:</strong> {{$status.ExpiresAt}}</p>{{end}}
+                    {{if $status.ExpiresAt}}<p><strong>Days Remaining:</strong> {{$status.DaysRemaining}}</p>{{end}}
+                    {{if $status.CertificateHost}}<p><strong>Certificate Common Name:</strong> {{$status.CertificateHost}}</p>{{end}}
+                    {{if $status.CertificateDNS}}<p><strong>Certificate DNS Names:</strong> {{range $i, $name := $status.CertificateDNS}}{{if $i}}, {{end}}{{$name}}{{end}}</p>{{end}}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">What GoMud Checked</div>
+                <div class="card-body">
+                    {{if $status.Checks}}
+                        <ul class="mb-0">
+                            {{range $status.Checks}}<li>{{.}}</li>{{end}}
+                        </ul>
+                    {{else}}
+                        <p class="mb-0">No HTTPS checks have been recorded yet.</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Next Steps</div>
+                <div class="card-body">
+                    {{if $status.NextSteps}}
+                        <ol class="mb-0">
+                            {{range $status.NextSteps}}<li>{{.}}</li>{{end}}
+                        </ol>
+                    {{else}}
+                        <p class="mb-0">No action is currently required.</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Last Error</div>
+                <div class="card-body">
+                    {{if $status.LastError}}
+                        <pre class="mb-0">{{$status.LastError}}</pre>
+                    {{else}}
+                        <p class="mb-0">No HTTPS errors have been recorded.</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header">Useful Commands</div>
+                <div class="card-body">
+                    <pre class="mb-0">ss -ltnp | rg ':80|:443'
+dig +short {{if $status.Host}}{{$status.Host}}{{else}}example.com{{end}}
+curl -I http://{{if $status.Host}}{{$status.Host}}{{else}}localhost{{end}}/
+curl -vk https://{{if $status.Host}}{{$status.Host}}{{else}}localhost{{end}}/</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{template "footer" .}}
