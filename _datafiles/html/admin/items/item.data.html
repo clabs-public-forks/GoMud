@@ -43,7 +43,7 @@
             <select class="form-control form-control-sm" name="type" id="type" aria-describedby="type-help"  rows="10">
             {{$itemType := .itemSpec.Type}}
             {{range $index, $typeInfo := .itemTypes}}
-                <option value="{{ $typeInfo.Type }}" {{if eq $typeInfo.Type $itemType}}SELECTED{{end}}>{{ rpad 15 $typeInfo.Type "&nbsp;&nbsp;" }} {{ $typeInfo.Description }}</option>
+                <option value="{{ $typeInfo.Type }}" {{if eq $typeInfo.Type $itemType}}SELECTED{{end}}>{{ rpadhtml 15 $typeInfo.Type "&nbsp;&nbsp;" }} {{ $typeInfo.Description }}</option>
             {{end}}
             </select>
             <small id="type-help" class="form-text text-muted">What type of item is this?</small>
@@ -54,7 +54,7 @@
             <select class="form-control form-control-sm" name="subtype" id="subtype" aria-describedby="subtype-help"  rows="10">
             {{$itemSubtype := .itemSpec.Subtype}}
             {{range $index, $typeInfo := .itemSubtypes}}
-                <option value="{{ $typeInfo.Type }}" {{if eq $typeInfo.Type $itemSubtype}}SELECTED{{end}}>{{ rpad 15 $typeInfo.Type "&nbsp;&nbsp;" }} {{ $typeInfo.Description }}</option>
+                <option value="{{ $typeInfo.Type }}" {{if eq $typeInfo.Type $itemSubtype}}SELECTED{{end}}>{{ rpadhtml 15 $typeInfo.Type "&nbsp;&nbsp;" }} {{ $typeInfo.Description }}</option>
             {{end}}
             </select>
             <small id="subtype-help" class="form-text text-muted">What subtype of item is this?</small>

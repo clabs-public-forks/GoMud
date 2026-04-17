@@ -18,7 +18,7 @@ The web system is built around Go's standard `net/http` package with several key
 - Graceful shutdown with timeout management
 
 **Template System:**
-- Go `text/template` based HTML rendering
+- Go `html/template` based HTML rendering
 - Automatic inclusion of `_*.html` template files
 - Plugin template override capability
 - Custom template functions for formatting and logic
@@ -131,7 +131,7 @@ The web system is built around Go's standard `net/http` package with several key
 {{join .Items ", "}}        <!-- Join array with separator -->
 {{uc "text"}}               <!-- Title case -->
 {{lc "TEXT"}}               <!-- Lower case -->
-{{escapehtml .UserInput}}   <!-- HTML escape -->
+{{escapehtml .UserInput}}   <!-- Legacy no-op; html/template escapes output -->
 
 <!-- Numeric operations -->
 {{add .Count 1}}            <!-- Addition -->
@@ -343,7 +343,7 @@ mudlog.Info("Web",
 
 - `net/http` - HTTP server and routing
 - `github.com/gorilla/websocket` - WebSocket upgrade and handling
-- `text/template` - HTML template processing
+- `html/template` - HTML template processing with escaping
 - `crypto/tls` - HTTPS certificate management
 - `internal/configs` - Configuration management
 - `internal/users` - Authentication and user management

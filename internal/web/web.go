@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	htemplate "html/template"
 	"log"
 	"log/slog"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/GoMudEngine/GoMud/internal/configs"
@@ -199,7 +199,7 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	// Add the final (actual) file
 
 	// Parse
-	tmpl := template.New(filepath.Base(fullPath)).Funcs(funcMap)
+	tmpl := htemplate.New(filepath.Base(fullPath)).Funcs(funcMap)
 
 	if pluginHtml == `` {
 		templateFiles = append(templateFiles, fullPath)
