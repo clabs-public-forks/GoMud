@@ -344,6 +344,81 @@ func overridePath() string {
 	return overridePath
 }
 
+func overridePaths() []string {
+	return overridePathsForConfig(GetConfig())
+}
+
+func overridePathsForConfig(configData Config) []string {
+	paths := []string{`_datafiles/config-overrides.yaml`}
+
+	configData.FilePaths.Validate()
+	dataFilesPath := configData.FilePaths.DataFiles.String() + `/config-overrides.yaml`
+	if dataFilesPath != paths[0] {
+		paths = append(paths, dataFilesPath)
+	}
+
+	if configPath := os.Getenv(`CONFIG_PATH`); configPath != `` && configPath != paths[len(paths)-1] {
+		paths = append(paths, configPath)
+	}
+
+	return paths
+}
+
+func mergeOverrideMaps(base map[string]any, next map[string]any) map[string]any {
+	flatOverrides := Flatten(base)
+	flatNext := Flatten(next)
+
+	for k, v := range flatNext {
+		flatOverrides[k] = v
+	}
+
+	return unflattenMap(flatOverrides)
+}
+
+func loadOverrides(tmpConfigData *Config, paths []string, accumulatedOverrides map[string]any) (bool, map[string]any, error) {
+	if accumulatedOverrides == nil {
+		accumulatedOverrides = make(map[string]any)
+	}
+
+	loadedOverrides := false
+	for _, overridePath := range paths {
+		mudlog.Info("ReloadConfig()", "overridePath", overridePath)
+
+		if _, err := os.Stat(util.FilePath(overridePath)); err != nil {
+			continue
+		}
+
+		mudlog.Info("ReloadConfig()", "Loading overrides", overridePath)
+
+		overrideBytes, err := os.ReadFile(util.FilePath(overridePath))
+		if err != nil {
+			return false, accumulatedOverrides, err
+		}
+
+		tmpOverrides := map[string]any{}
+		err = yaml.Unmarshal(overrideBytes, &tmpOverrides)
+		if err != nil {
+			return false, accumulatedOverrides, err
+		}
+
+		// Attempt a correction for bad names
+		for k, v := range tmpOverrides {
+			if newKey, _ := FindFullPath(k); newKey != k {
+				tmpOverrides[newKey] = v
+				delete(tmpOverrides, k)
+			}
+		}
+
+		if err := tmpConfigData.OverlayOverrides(tmpOverrides); err != nil {
+			return false, accumulatedOverrides, err
+		}
+		accumulatedOverrides = mergeOverrideMaps(accumulatedOverrides, tmpOverrides)
+		loadedOverrides = true
+	}
+
+	return loadedOverrides, accumulatedOverrides, nil
+}
+
 func ReloadConfig() error {
 
 	configPath := util.FilePath(`_datafiles/config.yaml`)
@@ -384,37 +459,19 @@ func ReloadConfig() error {
 		typeLookups[k] = reflect.TypeOf(v).String()
 	}
 
-	overridePath := overridePath()
+	loadedOverrides, loadedOverrideData, err := loadOverrides(&tmpConfigData, []string{`_datafiles/config-overrides.yaml`}, nil)
+	if err != nil {
+		return err
+	}
 
-	mudlog.Info("ReloadConfig()", "overridePath", overridePath)
+	remainingOverridePaths := overridePathsForConfig(tmpConfigData)[1:]
+	remainingLoadedOverrides, loadedOverrideData, err := loadOverrides(&tmpConfigData, remainingOverridePaths, loadedOverrideData)
+	if err != nil {
+		return err
+	}
+	loadedOverrides = loadedOverrides || remainingLoadedOverrides
 
-	if _, err := os.Stat(util.FilePath(overridePath)); err == nil {
-		if overridePath != `` {
-
-			mudlog.Info("ReloadConfig()", "Loading overrides", true)
-
-			overrideBytes, err := os.ReadFile(util.FilePath(overridePath))
-			if err != nil {
-				return err
-			}
-
-			tmpOverrides := map[string]any{}
-			err = yaml.Unmarshal(overrideBytes, &tmpOverrides)
-			if err != nil {
-				return err
-			}
-
-			// Attempt a correction for bad names
-			for k, v := range tmpOverrides {
-				if newKey, _ := FindFullPath(k); newKey != k {
-					tmpOverrides[newKey] = v
-					delete(tmpOverrides, k)
-				}
-			}
-
-			tmpConfigData.SetOverrides(tmpOverrides)
-		}
-	} else {
+	if !loadedOverrides {
 		mudlog.Info("ReloadConfig()", "Loading overrides", false)
 	}
 
@@ -426,6 +483,7 @@ func ReloadConfig() error {
 	defer configDataLock.Unlock()
 	// Assign it
 	configData = tmpConfigData
+	overrides = loadedOverrideData
 
 	return nil
 }

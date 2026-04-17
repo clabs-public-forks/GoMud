@@ -1,24 +1,35 @@
 ################################################################################
 #
 #   CONFIGURATION FILE
-#   This file contains all of the configuration options for the game.
-#   You can change these options to customize the game to your liking.
+#   - Bundled base config for GoMud.
+#   - Most server owners should leave this file unchanged.
 #
-#   Note: If you decide to use a custom config.yaml, it is recommended that you
-#   copy only the properties you want to change of this file into your own
-#   config.yaml.
-#   When running the server, use the environment variable: CONFIG_PATH like so:
-#   CONFIG_PATH=../mudfiles/config.yaml to specify where your custom config file
-#   can be found.
+#   Custom server settings:
+#   - Copy "_datafiles/config-overrides.example.yaml" to "_datafiles/config-overrides.yaml"
+#   - Place your custom settings there
 #
-#   This way when you update the server, your custom config file will not be
-#   overwritten.
+#   World-specific settings:
+#   - Use "${DataFiles}/config-overrides.yaml"
+#   - Default: "_datafiles/world/default/config-overrides.yaml"
 #
-#   Note: The name/value pairs are hierarchical, nested under other values.
-#   This means you must tab out values that belong under a namespace.
-#   For example: MudName is tabbed out two spaces from Server
-#   Alternatively, you can specify it using a dot-syntax in your overrides file:
-#   Server.MudName: "GoMud"
+#   Custom CONFIG_PATH:
+#   - set "CONFIG_PATH=../mudfiles/config-overrides.yaml"
+#
+#   Config load order:
+#   1. _datafiles/config.yaml
+#   2. _datafiles/config-overrides.yaml
+#   3. ${DataFiles}/config-overrides.yaml
+#   4. CONFIG_PATH (if set)
+#
+#   Notes:
+#   - Values are hierarchical and nested under sections.
+#   - For example: MudName is tabbed out two spaces from Server
+#     ```
+#     Server:
+#       MudName: "GoMud"
+#     ```
+#   - Override files can also use dot syntax:
+#     Server.MudName: "GoMud"
 #
 ################################################################################
 

@@ -1,0 +1,20 @@
+# Global Config Overrides
+# -----------------------
+# - Copy this file to "_datafiles/config-overrides.yaml".
+# - Use it for custom server settings for this install, such as hostnames, ports,
+#   HTTPS, and TLS file paths.
+# - It is loaded before "${DataFiles}/config-overrides.yaml".
+# - The copied config-overrides.yaml file is ignored by git.
+
+Server.MudName: "My GoMud Server"
+
+FilePaths.WebDomain: "localhost"
+
+Network:
+  HttpPort: 80
+  HttpsPort: 0
+  HttpsRedirect: false
+
+# Uncomment and adjust these if you use manually managed HTTPS certificate files.
+# FilePaths.HttpsCertFile: "/path/to/server.crt"
+# FilePaths.HttpsKeyFile: "/path/to/server.key"
