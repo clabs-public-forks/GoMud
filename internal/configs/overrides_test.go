@@ -127,7 +127,7 @@ func TestLoadOverridesPrecedence(t *testing.T) {
 		t.Fatalf("writing env override: %v", err)
 	}
 
-	loaded, err := loadOverrides(&cfg, []string{globalPath, worldPath, envPath})
+	loaded, loadedOverrides, err := loadOverrides(&cfg, []string{globalPath, worldPath, envPath}, nil)
 	if err != nil {
 		t.Fatalf("loadOverrides failed: %v", err)
 	}
@@ -141,19 +141,26 @@ func TestLoadOverridesPrecedence(t *testing.T) {
 	if got := int(cfg.Network.HttpPort); got != 9090 {
 		t.Fatalf("expected env override to win for Network.HttpPort, got %d", got)
 	}
+
+	if got := loadedOverrides["Server"].(map[string]any)["MudName"]; got != "World" {
+		t.Fatalf("expected loaded overrides to preserve winning Server.MudName, got %q", got)
+	}
+	if got := loadedOverrides["Network"].(map[string]any)["HttpPort"]; got != 9090 {
+		t.Fatalf("expected loaded overrides to preserve winning Network.HttpPort, got %v", got)
+	}
 }
 
 func TestOverridePathsIncludesGlobalWorldAndEnv(t *testing.T) {
 	t.Setenv("CONFIG_PATH", "/tmp/config.custom.yaml")
 
-	configData = Config{
+	cfg := Config{
 		FilePaths: FilePaths{
 			DataFiles: "_datafiles/world/custom",
 		},
 		validated: true,
 	}
 
-	paths := overridePaths()
+	paths := overridePathsForConfig(cfg)
 	expected := []string{
 		"_datafiles/config-overrides.yaml",
 		"_datafiles/world/custom/config-overrides.yaml",
@@ -168,5 +175,39 @@ func TestOverridePathsIncludesGlobalWorldAndEnv(t *testing.T) {
 		if paths[i] != expected[i] {
 			t.Fatalf("expected override path %d to be %q, got %q", i, expected[i], paths[i])
 		}
+	}
+}
+
+func TestOverridePathsUsesGlobalOverrideDataFiles(t *testing.T) {
+	mudlog.SetupLogger(nil, "LOW", "", false)
+	t.Setenv("CONFIG_PATH", "")
+
+	tmpDir := t.TempDir()
+
+	cfg := Config{
+		FilePaths: FilePaths{
+			DataFiles: "_datafiles/world/default",
+		},
+	}
+
+	globalPath := filepath.Join(tmpDir, "global.yaml")
+	if err := os.WriteFile(globalPath, []byte("FilePaths:\n  DataFiles: _datafiles/world/custom\n"), 0o644); err != nil {
+		t.Fatalf("writing global override: %v", err)
+	}
+
+	loaded, loadedOverrides, err := loadOverrides(&cfg, []string{globalPath}, nil)
+	if err != nil {
+		t.Fatalf("loadOverrides failed: %v", err)
+	}
+	if !loaded {
+		t.Fatal("expected global override to load")
+	}
+
+	paths := overridePathsForConfig(cfg)
+	if got, expected := paths[1], "_datafiles/world/custom/config-overrides.yaml"; got != expected {
+		t.Fatalf("expected world override path after global override to be %q, got %q", expected, got)
+	}
+	if got := loadedOverrides["FilePaths"].(map[string]any)["DataFiles"]; got != "_datafiles/world/custom" {
+		t.Fatalf("expected loaded overrides to preserve FilePaths.DataFiles, got %q", got)
 	}
 }
