@@ -2,6 +2,7 @@ package webhelp
 
 import (
 	"embed"
+	htemplate "html/template"
 	"net/http"
 	"sort"
 	"strings"
@@ -118,7 +119,7 @@ func (w *WebHelpModule) getHelpCommand(r *http.Request) map[string]any {
 		if err != nil {
 			data[`error`] = `"` + searchTerm + `" Not Found`
 		} else {
-			data[`contents`] = ansitags.Parse(contents, ansitags.HTML)
+			data[`contents`] = htemplate.HTML(ansitags.Parse(contents, ansitags.HTML))
 		}
 	}
 
