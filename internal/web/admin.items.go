@@ -90,7 +90,7 @@ func adminItemDataContent(itemSpec items.ItemSpec) htemplate.HTMLAttr {
 		markup.WriteString("<span class='text-warning'>&#x2605;</span> ")
 	}
 
-	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", html.EscapeString(itemSpec.Name))
+	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", adminPickerDataText(itemSpec.Name))
 
 	if itemSpec.Cursed {
 		markup.WriteString(" <span class='badge badge-pill badge-danger'>Cursed</span>")
@@ -101,6 +101,12 @@ func adminItemDataContent(itemSpec items.ItemSpec) htemplate.HTMLAttr {
 	}
 
 	return htemplate.HTMLAttr(`data-content="` + markup.String() + `"`)
+}
+
+func adminPickerDataText(text string) string {
+	// Bootstrap-select interprets data-content as HTML after the browser decodes
+	// the attribute value, so dynamic text must remain escaped after one decode.
+	return html.EscapeString(html.EscapeString(text))
 }
 
 func itemData(w http.ResponseWriter, r *http.Request) {

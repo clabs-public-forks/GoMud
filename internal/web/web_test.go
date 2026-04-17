@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"html"
 	htemplate "html/template"
 	"net/http"
 	"net/http/httptest"
@@ -210,8 +211,11 @@ func TestAdminPickerDataContentPreservesMarkupAndEscapesUserText(t *testing.T) {
 	if strings.Contains(itemOutput, `<b>Blade`) {
 		t.Fatalf("item data-content included raw user text: %s", itemOutput)
 	}
-	if !strings.Contains(itemOutput, `&lt;b&gt;Blade &amp; &#34;Dagger&#34;&lt;/b&gt;`) {
+	if !strings.Contains(itemOutput, `&amp;lt;b&amp;gt;Blade &amp;amp; &amp;#34;Dagger&amp;#34;&amp;lt;/b&amp;gt;`) {
 		t.Fatalf("item data-content did not escape user text: %s", itemOutput)
+	}
+	if strings.Contains(html.UnescapeString(itemOutput), `<b>Blade`) {
+		t.Fatalf("item data-content decodes to executable user markup: %s", itemOutput)
 	}
 
 	mobAttr := adminMobDataContent(mobs.Mob{
@@ -226,8 +230,40 @@ func TestAdminPickerDataContentPreservesMarkupAndEscapesUserText(t *testing.T) {
 	if strings.Contains(mobOutput, `<script>alert(1)</script>`) {
 		t.Fatalf("mob data-content included raw script text: %s", mobOutput)
 	}
-	if !strings.Contains(mobOutput, `Sneak &lt;script&gt;alert(1)&lt;/script&gt;`) {
+	if !strings.Contains(mobOutput, `Sneak &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;`) {
 		t.Fatalf("mob data-content did not escape name: %s", mobOutput)
+	}
+	if strings.Contains(html.UnescapeString(mobOutput), `<script>alert(1)</script>`) {
+		t.Fatalf("mob data-content decodes to executable user markup: %s", mobOutput)
+	}
+
+	roomAttr := adminRoomDataContent(struct {
+		RoomId          int
+		RoomZone        string
+		ZoneRoot        bool
+		RoomTitle       string
+		IsBank          bool
+		IsStorage       bool
+		IsCharacterRoom bool
+		IsSkillTraining bool
+		HasContainer    bool
+		IsPvp           bool
+		DataContent     htemplate.HTMLAttr
+	}{
+		RoomId:    56,
+		RoomZone:  `zone <img src=x onerror=alert(1)>`,
+		RoomTitle: `Hall <svg onload=alert(1)>`,
+	})
+	roomOutput := string(roomAttr)
+	if !strings.Contains(roomOutput, `zone &amp;lt;img src=x onerror=alert(1)&amp;gt;`) {
+		t.Fatalf("room data-content did not escape zone: %s", roomOutput)
+	}
+	if !strings.Contains(roomOutput, `Hall &amp;lt;svg onload=alert(1)&amp;gt;`) {
+		t.Fatalf("room data-content did not escape title: %s", roomOutput)
+	}
+	decodedRoomOutput := html.UnescapeString(roomOutput)
+	if strings.Contains(decodedRoomOutput, `<img src=x onerror=alert(1)>`) || strings.Contains(decodedRoomOutput, `<svg onload=alert(1)>`) {
+		t.Fatalf("room data-content decodes to executable user markup: %s", roomOutput)
 	}
 }
 
