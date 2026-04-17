@@ -546,6 +546,9 @@ func SaveUser(u UserRecord, isAutoSave ...bool) error {
 	if err != nil {
 		return err
 	}
+	if err := os.Chmod(saveFilePath, 0o600); err != nil {
+		return err
+	}
 	fileWritten = true
 	if carefulSave {
 		tmpSaved = true
@@ -559,6 +562,10 @@ func SaveUser(u UserRecord, isAutoSave ...bool) error {
 			return err
 		}
 		tmpCopied = true
+	}
+
+	if err := os.Chmod(path, 0o600); err != nil {
+		return err
 	}
 
 	completed = true

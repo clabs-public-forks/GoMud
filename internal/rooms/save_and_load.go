@@ -167,7 +167,7 @@ func SaveRoomTemplate(roomTpl Room) error {
 
 	// First write the empty version to its template file
 	roomFilePath := util.FilePath(configs.GetFilePathsConfig().DataFiles.String(), `/rooms/`, fmt.Sprintf("%s%d.yaml", zoneFolder, roomTpl.RoomId))
-	if err = os.WriteFile(roomFilePath, data, 0o644); err != nil {
+	if err = util.SaveWithMode(roomFilePath, data, 0o644); err != nil {
 		return err
 	}
 
@@ -305,7 +305,7 @@ func SaveRoomInstance(r Room) error {
 		return err
 	}
 
-	if err = os.WriteFile(instanceFilePath, data, 0o644); err != nil {
+	if err = util.SaveWithMode(instanceFilePath, data, 0o644); err != nil {
 		return err
 	}
 

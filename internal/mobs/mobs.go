@@ -656,7 +656,7 @@ func (r *Mob) Save() error {
 
 	saveFilePath := util.FilePath(configs.GetFilePathsConfig().DataFiles.String(), `/`, `mobs`, `/`, fmt.Sprintf("%s.yaml", fileName))
 
-	err = os.WriteFile(saveFilePath, bytes, 0644)
+	err = util.SaveWithMode(saveFilePath, bytes, 0o644)
 	if err != nil {
 		return err
 	}

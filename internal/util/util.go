@@ -676,6 +676,10 @@ func SafeSaveWithMode(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 
+	if err := os.Chmod(safePath, mode); err != nil {
+		return err
+	}
+
 	//
 	// Once the file is written, rename it to remove the .new suffix and overwrite the old file
 	//

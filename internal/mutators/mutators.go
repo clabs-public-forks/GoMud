@@ -2,7 +2,6 @@ package mutators
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -289,7 +288,7 @@ func (m *MutatorSpec) Save() error {
 
 	saveFilePath := util.FilePath(configs.GetFilePathsConfig().DataFiles.String(), `/`, `mutators`, `/`, fmt.Sprintf("%s.yaml", fileName))
 
-	err = os.WriteFile(saveFilePath, bytes, 0644)
+	err = util.SaveWithMode(saveFilePath, bytes, 0o644)
 	if err != nil {
 		return err
 	}
