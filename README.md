@@ -8,7 +8,7 @@
 
 It includes a fully playable default world, and provides built-in tools to customize or create your own.
 
-Playable online demo: **https://www.gomud.net**
+Playable online demo: **<https://www.gomud.net>**
 
 ---
 
@@ -72,6 +72,18 @@ Colorization is handled through extensive use of my [github.com/GoMudEngine/ansi
 
 - `docker` to build/run as a container (optional)
 
+### Config
+
+- Create a local server config file:
+
+```shell
+cp _datafiles/config-overrides.example.yaml _datafiles/config-overrides.yaml
+```
+
+- Place any custom settings in that `config-overrides.yaml`
+
+- `_datafiles/config.yaml` contains all default settings that can be modified in the overrides file.
+
 ### Usage
 
 In a Terminal, run one of the following commands:
@@ -102,18 +114,6 @@ Default seeded credentials in the bundled world:
 
 - Username: `admin`
 - Password: `password`
-
-### Local Config Overrides
-
-Keep local deployment settings out of `_datafiles/config.yaml` by copying
-`_datafiles/world/default/config-overrides.example.yaml` to
-`_datafiles/world/default/config-overrides.yaml`.
-
-GoMud loads `_datafiles/config.yaml` first, then overlays values from the
-active data folder's `config-overrides.yaml`. That local override file is
-ignored by git, so it is a better place for hostnames, local ports, certificate
-paths, and private server settings. You can also set `CONFIG_PATH` to load an
-override file from another location.
 
 ---
 
@@ -151,12 +151,12 @@ Interested in contributing? Check out our [CONTRIBUTING.md](https://github.com/G
 
 When running, several environment variables can be set to alter behaviors of the mud:
 
-| Variable      | Example Value                   | Descripton                           |
-|---------------|---------------------------------|--------------------------------------|
-| `CONFIG_PATH` | `/path/to/config.yaml`          | Use alternate config file            |
-| `LOG_PATH`    | `/path/to/log.txt`              | Log to file instead of stderr        |
-| `LOG_LEVEL`   | `LOW` / `MEDIUM` / `HIGH`       | Set verbosity (rotates at 100MB)     |
-| `LOG_NOCOLOR` | `1`                             | Disable colored log output           |
+| Variable      | Example Value                    | Descripton                           |
+|---------------|----------------------------------|--------------------------------------|
+| `CONFIG_PATH` | `/path/to/config-overrides.yaml` | Use alternate final override file   |
+| `LOG_PATH`    | `/path/to/log.txt`               | Log to file instead of stderr        |
+| `LOG_LEVEL`   | `LOW` / `MEDIUM` / `HIGH`        | Set verbosity (rotates at 100MB)     |
+| `LOG_NOCOLOR` | `1`                              | Disable colored log output           |
 
 ### Why Go?
 

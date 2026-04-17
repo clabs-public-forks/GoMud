@@ -1,19 +1,11 @@
-# Copy this file to config-overrides.yaml in the same folder for local settings.
-# GoMud loads _datafiles/config.yaml first, then overlays values from this file.
-# The real config-overrides.yaml file is ignored by git.
-#
-# Use only the settings you want to change. Both nested YAML and dot syntax are
-# supported by the config loader.
+# World Config Overrides
+# -----------------------
+# - Copy this file to "config-overrides.yaml" in the same folder.
+# - Use it for custom settings that should stay with this world/data folder.
+# - It is loaded after "_datafiles/config-overrides.yaml".
+# - Keep server-wide settings like hostnames, ports, and HTTPS in
+#   "_datafiles/config-overrides.yaml".
+# - The copied config-overrides.yaml file is ignored by git.
 
-Server.MudName: "My GoMud Server"
-
-FilePaths.WebDomain: "localhost"
-
-Network:
-  HttpPort: 80
-  HttpsPort: 0
-  HttpsRedirect: false
-
-# Uncomment and adjust these if you use manually managed HTTPS certificate files.
-# FilePaths.HttpsCertFile: "/path/to/server.crt"
-# FilePaths.HttpsKeyFile: "/path/to/server.key"
+# Example world-specific override:
+# FilePaths.DataFiles: "_datafiles/world/default"

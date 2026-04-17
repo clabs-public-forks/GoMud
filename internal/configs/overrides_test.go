@@ -1,8 +1,11 @@
 package configs
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/GoMudEngine/GoMud/internal/mudlog"
 	"gopkg.in/yaml.v2"
 )
 
@@ -93,5 +96,77 @@ func TestOverlayDotMapMultipleFields(t *testing.T) {
 	}
 	if cfg.Statistics.SomeField != "updated" {
 		t.Errorf("Expected SomeField to be 'updated', got '%s'", cfg.Statistics.SomeField)
+	}
+}
+
+func TestLoadOverridesPrecedence(t *testing.T) {
+	mudlog.SetupLogger(nil, "LOW", "", false)
+
+	tmpDir := t.TempDir()
+
+	cfg := Config{
+		Server: Server{
+			MudName: "Base",
+		},
+		Network: Network{
+			HttpPort: 80,
+		},
+	}
+
+	globalPath := filepath.Join(tmpDir, "global.yaml")
+	worldPath := filepath.Join(tmpDir, "world.yaml")
+	envPath := filepath.Join(tmpDir, "env.yaml")
+
+	if err := os.WriteFile(globalPath, []byte("Server:\n  MudName: Global\nNetwork:\n  HttpPort: 8080\n"), 0o644); err != nil {
+		t.Fatalf("writing global override: %v", err)
+	}
+	if err := os.WriteFile(worldPath, []byte("Server:\n  MudName: World\n"), 0o644); err != nil {
+		t.Fatalf("writing world override: %v", err)
+	}
+	if err := os.WriteFile(envPath, []byte("Network:\n  HttpPort: 9090\n"), 0o644); err != nil {
+		t.Fatalf("writing env override: %v", err)
+	}
+
+	loaded, err := loadOverrides(&cfg, []string{globalPath, worldPath, envPath})
+	if err != nil {
+		t.Fatalf("loadOverrides failed: %v", err)
+	}
+	if !loaded {
+		t.Fatal("expected overrides to load")
+	}
+
+	if got := cfg.Server.MudName.String(); got != "World" {
+		t.Fatalf("expected world override to win for Server.MudName, got %q", got)
+	}
+	if got := int(cfg.Network.HttpPort); got != 9090 {
+		t.Fatalf("expected env override to win for Network.HttpPort, got %d", got)
+	}
+}
+
+func TestOverridePathsIncludesGlobalWorldAndEnv(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "/tmp/config.custom.yaml")
+
+	configData = Config{
+		FilePaths: FilePaths{
+			DataFiles: "_datafiles/world/custom",
+		},
+		validated: true,
+	}
+
+	paths := overridePaths()
+	expected := []string{
+		"_datafiles/config-overrides.yaml",
+		"_datafiles/world/custom/config-overrides.yaml",
+		"/tmp/config.custom.yaml",
+	}
+
+	if len(paths) != len(expected) {
+		t.Fatalf("expected %d override paths, got %d: %v", len(expected), len(paths), paths)
+	}
+
+	for i := range expected {
+		if paths[i] != expected[i] {
+			t.Fatalf("expected override path %d to be %q, got %q", i, expected[i], paths[i])
+		}
 	}
 }

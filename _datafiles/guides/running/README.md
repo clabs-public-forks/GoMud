@@ -34,16 +34,20 @@ Or if you have docker installed:
 
 For local server settings, copy:
 
-> `_datafiles/world/default/config-overrides.example.yaml`
+> `_datafiles/config-overrides.example.yaml`
 
 to:
 
-> `_datafiles/world/default/config-overrides.yaml`
+> `_datafiles/config-overrides.yaml`
 
-GoMud loads `_datafiles/config.yaml` first, then overlays values from the active
-data folder's `config-overrides.yaml`. The local override file is ignored by
-git, so use it for hostnames, ports, certificate paths, and other deployment
-settings that should not be committed.
+GoMud loads `_datafiles/config.yaml` first, then overlays values from
+`_datafiles/config-overrides.yaml`, then the active data folder's
+`config-overrides.yaml`. The local override files are ignored by git, so use
+them for hostnames, ports, certificate paths, and other deployment settings
+that should not be committed.
+
+Use the world-level override file only for settings that should stay attached
+to that world/data folder.
 
 You can also set `CONFIG_PATH=/path/to/config-overrides.yaml` to load overrides
 from another location.

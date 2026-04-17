@@ -300,10 +300,12 @@ func isEditAllowed(configPath string) bool {
 
 ### Startup Process
 1. **Load Base Configuration**: Read `_datafiles/config.yaml`
-2. **Load Overrides**: Read `config-overrides.yaml` if it exists
-3. **Apply Environment Variables**: Set values from environment
-4. **Validate Configuration**: Run all validation functions
-5. **Build Lookup Tables**: Create path and type lookup maps
+2. **Load Global Overrides**: Read `_datafiles/config-overrides.yaml` if it exists
+3. **Load World Overrides**: Read the active data folder's `config-overrides.yaml` if it exists
+4. **Load Final Override Path**: Read `CONFIG_PATH` if it is set
+5. **Apply Environment Variables**: Set values from environment
+6. **Validate Configuration**: Run all validation functions
+7. **Build Lookup Tables**: Create path and type lookup maps
 
 ### Runtime Updates
 ```go
