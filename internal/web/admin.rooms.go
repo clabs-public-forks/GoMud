@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"html"
 	htemplate "html/template"
 	"net/http"
 	"sort"
@@ -173,7 +172,7 @@ func adminRoomDataContent(roomInfo struct {
 	var markup strings.Builder
 
 	fmt.Fprintf(&markup, "<span class='badge badge-secondary'> %d </span> ", roomInfo.RoomId)
-	fmt.Fprintf(&markup, "<span class='badge badge-pill badge-warning'>%s</span> ", html.EscapeString(roomInfo.RoomZone))
+	fmt.Fprintf(&markup, "<span class='badge badge-pill badge-warning'>%s</span> ", adminPickerDataText(roomInfo.RoomZone))
 
 	if roomInfo.ZoneRoot {
 		markup.WriteString("<span class='badge badge-pill badge-danger'>root</span> ")
@@ -183,7 +182,7 @@ func adminRoomDataContent(roomInfo struct {
 	if roomInfo.IsPvp {
 		titleClass += " text-danger"
 	}
-	fmt.Fprintf(&markup, "<span class='%s'>%s</span>", titleClass, html.EscapeString(roomInfo.RoomTitle))
+	fmt.Fprintf(&markup, "<span class='%s'>%s</span>", titleClass, adminPickerDataText(roomInfo.RoomTitle))
 
 	if roomInfo.IsBank {
 		markup.WriteString(" <span class='badge badge-pill badge-success'>bank</span>")

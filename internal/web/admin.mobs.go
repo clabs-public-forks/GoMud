@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"html"
 	htemplate "html/template"
 	"net/http"
 	"sort"
@@ -64,7 +63,7 @@ func adminMobDataContent(mobInfo mobs.Mob) htemplate.HTMLAttr {
 		markup.WriteString("<span class='text-warning'>&#x2605;</span> ")
 	}
 
-	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", html.EscapeString(mobInfo.Character.Name))
+	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", adminPickerDataText(mobInfo.Character.Name))
 
 	if len(mobInfo.Character.Shop) > 0 {
 		markup.WriteString(" <span class='badge badge-pill badge-warning'>shop</span>")
