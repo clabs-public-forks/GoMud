@@ -1,11 +1,13 @@
 package web
 
 import (
+	"fmt"
 	"html"
+	htemplate "html/template"
 	"net/http"
 	"sort"
 	"strconv"
-	"text/template"
+	"strings"
 
 	"github.com/GoMudEngine/GoMud/internal/buffs"
 	"github.com/GoMudEngine/GoMud/internal/configs"
@@ -13,9 +15,14 @@ import (
 	"github.com/GoMudEngine/GoMud/internal/mudlog"
 )
 
+type adminItemOption struct {
+	items.ItemSpec
+	DataContent htemplate.HTMLAttr
+}
+
 func itemsIndex(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/items/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
+	tmpl, err := htemplate.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/items/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -24,7 +31,7 @@ func itemsIndex(w http.ResponseWriter, r *http.Request) {
 
 	filterType := qsp.Get(`filter-type`)
 
-	itemSpecs := []items.ItemSpec{}
+	itemSpecs := []adminItemOption{}
 
 	itemTypes := items.ItemTypes()
 	itemTypes = append(itemTypes, items.ItemSubtypes()...)
@@ -40,7 +47,10 @@ func itemsIndex(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		itemSpecs = append(itemSpecs, itemSpec)
+		itemSpecs = append(itemSpecs, adminItemOption{
+			ItemSpec:    itemSpec,
+			DataContent: adminItemDataContent(itemSpec),
+		})
 	}
 
 	for i, typeInfo := range itemTypes {
@@ -56,7 +66,7 @@ func itemsIndex(w http.ResponseWriter, r *http.Request) {
 	})
 
 	itemIndexData := struct {
-		ItemSpecs  []items.ItemSpec
+		ItemSpecs  []adminItemOption
 		ItemTypes  []items.ItemTypeInfo
 		FilterType string
 	}{
@@ -71,9 +81,31 @@ func itemsIndex(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func adminItemDataContent(itemSpec items.ItemSpec) htemplate.HTMLAttr {
+	var markup strings.Builder
+
+	fmt.Fprintf(&markup, "<span class='badge badge-secondary'>%d</span> ", itemSpec.ItemId)
+
+	if itemSpec.QuestToken != "" {
+		markup.WriteString("<span class='text-warning'>&#x2605;</span> ")
+	}
+
+	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", html.EscapeString(itemSpec.Name))
+
+	if itemSpec.Cursed {
+		markup.WriteString(" <span class='badge badge-pill badge-danger'>Cursed</span>")
+	}
+
+	if itemSpec.GetScript() != "" {
+		markup.WriteString(" <span class='badge badge-pill badge-info'>Script</span>")
+	}
+
+	return htemplate.HTMLAttr(`data-content="` + markup.String() + `"`)
+}
+
 func itemData(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("item.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/items/item.data.html")
+	tmpl, err := htemplate.New("item.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/items/item.data.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -108,7 +140,7 @@ func itemData(w http.ResponseWriter, r *http.Request) {
 	tplData[`itemTypes`] = items.ItemTypes()
 	tplData[`itemSubtypes`] = items.ItemSubtypes()
 
-	tplData[`script`] = html.EscapeString(itemSpec.GetScript())
+	tplData[`script`] = itemSpec.GetScript()
 
 	if err := tmpl.Execute(w, tplData); err != nil {
 		mudlog.Error("HTML Execute", "error", err)

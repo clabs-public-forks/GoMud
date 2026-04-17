@@ -1,10 +1,13 @@
 package web
 
 import (
+	"fmt"
+	"html"
+	htemplate "html/template"
 	"net/http"
 	"sort"
 	"strconv"
-	"text/template"
+	"strings"
 
 	"github.com/GoMudEngine/GoMud/internal/buffs"
 	"github.com/GoMudEngine/GoMud/internal/characters"
@@ -15,9 +18,14 @@ import (
 	"github.com/GoMudEngine/GoMud/internal/rooms"
 )
 
+type adminMobOption struct {
+	mobs.Mob
+	DataContent htemplate.HTMLAttr
+}
+
 func mobsIndex(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/mobs/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
+	tmpl, err := htemplate.New("index.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String()+"/_header.html", configs.GetFilePathsConfig().AdminHtml.String()+"/mobs/index.html", configs.GetFilePathsConfig().AdminHtml.String()+"/_footer.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}
@@ -27,10 +35,18 @@ func mobsIndex(w http.ResponseWriter, r *http.Request) {
 		return allMobs[i].MobId < allMobs[j].MobId
 	})
 
+	mobOptions := make([]adminMobOption, 0, len(allMobs))
+	for _, mobInfo := range allMobs {
+		mobOptions = append(mobOptions, adminMobOption{
+			Mob:         mobInfo,
+			DataContent: adminMobDataContent(mobInfo),
+		})
+	}
+
 	mobIndexData := struct {
-		Mobs []mobs.Mob
+		Mobs []adminMobOption
 	}{
-		allMobs,
+		mobOptions,
 	}
 
 	if err := tmpl.Execute(w, mobIndexData); err != nil {
@@ -39,9 +55,31 @@ func mobsIndex(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func adminMobDataContent(mobInfo mobs.Mob) htemplate.HTMLAttr {
+	var markup strings.Builder
+
+	fmt.Fprintf(&markup, "<span class='badge badge-secondary'>%d</span> ", mobInfo.MobId)
+
+	if len(mobInfo.QuestFlags) > 0 {
+		markup.WriteString("<span class='text-warning'>&#x2605;</span> ")
+	}
+
+	fmt.Fprintf(&markup, "<span class='font-weight-bold'>%s</span>", html.EscapeString(mobInfo.Character.Name))
+
+	if len(mobInfo.Character.Shop) > 0 {
+		markup.WriteString(" <span class='badge badge-pill badge-warning'>shop</span>")
+	}
+
+	if mobInfo.GetScript() != "" {
+		markup.WriteString(" <span class='badge badge-pill badge-info'>Script</span>")
+	}
+
+	return htemplate.HTMLAttr(`data-content="` + markup.String() + `"`)
+}
+
 func mobData(w http.ResponseWriter, r *http.Request) {
 
-	tmpl, err := template.New("mob.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/mobs/mob.data.html")
+	tmpl, err := htemplate.New("mob.data.html").Funcs(funcMap).ParseFiles(configs.GetFilePathsConfig().AdminHtml.String() + "/mobs/mob.data.html")
 	if err != nil {
 		mudlog.Error("HTML Template", "error", err)
 	}

@@ -2,15 +2,35 @@ package web
 
 import (
 	"fmt"
-	"html"
+	htemplate "html/template"
 	"strings"
-	"text/template"
 
 	"github.com/GoMudEngine/GoMud/internal/configs"
 )
 
+func rpadString(totalWidth int, padValues ...any) string {
+	var stringIn string = ""
+	var padString string = " "
+
+	if len(padValues) > 0 {
+		stringIn = fmt.Sprintf(`%v`, padValues[0])
+		if len(padValues) > 1 {
+			padString = fmt.Sprintf(`%v`, padValues[1])
+		}
+	}
+
+	if len(stringIn) >= totalWidth {
+		return stringIn
+	}
+	paddingLength := totalWidth - len(stringIn)
+	if paddingLength < 1 {
+		return stringIn
+	}
+	return stringIn + strings.Repeat(padString, paddingLength)
+}
+
 var (
-	funcMap = template.FuncMap{
+	funcMap = htemplate.FuncMap{
 		"pad": func(totalWidth int, padValues ...any) string {
 			var stringIn string = ""
 			var padString string = " "
@@ -56,24 +76,10 @@ var (
 			return strings.Repeat(padString, paddingLength) + stringIn
 		},
 		"rpad": func(totalWidth int, padValues ...any) string {
-			var stringIn string = ""
-			var padString string = " "
-
-			if len(padValues) > 0 {
-				stringIn = fmt.Sprintf(`%v`, padValues[0])
-				if len(padValues) > 1 {
-					padString = fmt.Sprintf(`%v`, padValues[1])
-				}
-			}
-
-			if len(stringIn) >= totalWidth {
-				return stringIn
-			}
-			paddingLength := totalWidth - len(stringIn)
-			if paddingLength < 1 {
-				return stringIn
-			}
-			return stringIn + strings.Repeat(padString, paddingLength)
+			return rpadString(totalWidth, padValues...)
+		},
+		"rpadhtml": func(totalWidth int, padValues ...any) htemplate.HTML {
+			return htemplate.HTML(rpadString(totalWidth, padValues...))
 		},
 		"join": func(items []string, sep string) string { return strings.Join(items, sep) },
 		"lte":  func(a, b int) bool { return a <= b },
@@ -94,7 +100,7 @@ var (
 			return result
 		},
 		"escapehtml": func(str string) string {
-			return html.EscapeString(str)
+			return str
 		},
 		"lowercase": func(str string) string {
 			return strings.ToLower(str)
