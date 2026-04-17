@@ -6,8 +6,7 @@ These guides assume you want to build from the source. You can also download the
 - [Running via Docker](DOCKER.md)
 - [Setting Up an EC2 Instance](EC2.md)
 
-
-# Quick Start
+## Quick Start
 
 You can download the latest release from the [releases page](https://github.com/GoMudEngine/GoMud/releases), unzip it and run the binary to get started, or if you prefer to build it yourself, follow the instructions below.
 
@@ -17,37 +16,38 @@ A youtube playlist to getting started has been set up here:
 
 You can compile and run it locally with:
 
-> `go run .`
+```shell
+go run .
+```
 
 Or you can just build the binary if you prefer:
 
-> `go build -o GoMudServer`
-
-> `./GoMudServer`
+```shell
+go build -o GoMudServer
+./GoMudServer
+```
 
 Or if you have docker installed:
 
-> `docker compose up --build`
+```shell
+docker compose up --build
+```
 
+## Local Config Overrides
 
-# Local Config Overrides
+For local server settings, make an overrides file:
 
-For local server settings, copy:
+```shell
+cp _datafiles/config-overrides.example.yaml _datafiles/config-overrides.yaml
+```
 
-> `_datafiles/config-overrides.example.yaml`
+- GoMud loads `_datafiles/config.yaml` first
+- Then overlays values from `_datafiles/config-overrides.yaml`
+- Then the active data folder's `config-overrides.yaml`
 
-to:
+The local override files are ignored by git, so use them for hostnames, ports, certificate paths, and other deployment settings that should not be committed.
 
-> `_datafiles/config-overrides.yaml`
-
-GoMud loads `_datafiles/config.yaml` first, then overlays values from
-`_datafiles/config-overrides.yaml`, then the active data folder's
-`config-overrides.yaml`. The local override files are ignored by git, so use
-them for hostnames, ports, certificate paths, and other deployment settings
-that should not be committed.
-
-Use the world-level override file only for settings that should stay attached
-to that world/data folder.
+Use the world-level override file only for settings that should stay attached to that world/data folder.
 
 You can also set `CONFIG_PATH=/path/to/config-overrides.yaml` to load overrides
 from another location.
