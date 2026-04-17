@@ -341,13 +341,13 @@ func (p *Plugin) WriteBytes(identifier string, bytes []byte) error {
 	fullPath := util.FilePath(folderPath, `/`, fileName)
 
 	if _, err := os.Stat(fullPath); err != nil {
-		if err = os.MkdirAll(folderPath, 0777); err != nil {
+		if err = os.MkdirAll(folderPath, 0o755); err != nil {
 			mudlog.Error(`plugin.WriteBytes`, `name`, p.name, `path`, folderPath, `error`, err)
 			return err
 		}
 	}
 
-	if err := os.WriteFile(fullPath, bytes, 0777); err != nil {
+	if err := os.WriteFile(fullPath, bytes, 0o644); err != nil {
 		mudlog.Error(`plugin.WriteBytes`, `name`, p.name, `path`, fullPath, `error`, err)
 		return err
 	}
