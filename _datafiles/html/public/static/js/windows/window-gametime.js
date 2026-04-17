@@ -23,7 +23,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            background: #000;
+            background: #1e1e1e;
             user-select: none;
         }
 
@@ -182,7 +182,7 @@
     // -----------------------------------------------------------------------
     // VirtualWindow instance
     // -----------------------------------------------------------------------
-    const win = new VirtualWindow('Gametime', {
+    const win = new VirtualWindow('Time & Date', {
         dock:          'left',
         defaultDocked: true,
         dockedHeight:  100,
@@ -192,7 +192,7 @@
             return {
                 title:      'Time & Date',
                 mount:      el,
-                background: '#1c3a5e',
+                background: '#1e1e1e',
                 border:     1,
                 x:          0,
                 y:          0,
@@ -244,7 +244,7 @@
             canvas.height = h;
         }
 
-        const ctx        = canvas.getContext('2d');
+        const ctx        = canvas.getContext('2d', { willReadFrequently: true });
         const night      = data.night;
         const hour24     = data.hour24;
         const minute     = data.minute;

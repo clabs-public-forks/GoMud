@@ -28,6 +28,7 @@ func init() {
 
 	events.RegisterListener(events.PlayerDespawn{}, g.onJoinLeave)
 	events.RegisterListener(events.PlayerSpawn{}, g.onJoinLeave)
+	events.RegisterListener(events.PlayerChanged{}, g.onJoinLeave)
 
 }
 
@@ -39,7 +40,6 @@ type GMCPGameModule struct {
 func (g *GMCPGameModule) onJoinLeave(e events.Event) events.ListenerReturn {
 
 	c := configs.GetConfig()
-
 	tFormat := string(c.TextFormats.Time)
 
 	whoPayload := `"Who": { "Players": [`
