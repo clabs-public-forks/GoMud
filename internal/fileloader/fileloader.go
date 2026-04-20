@@ -41,6 +41,11 @@ const (
 	SaveCareful SaveOption = iota // Save a backup and rename vs. just overwriting
 )
 
+const (
+	saveDirPerm  os.FileMode = 0o755
+	saveFilePerm os.FileMode = 0o644
+)
+
 func LoadFlatFile[T LoadableSimple](path string) (T, error) {
 
 	var loaded T
@@ -220,7 +225,9 @@ func SaveFlatFile[T LoadableSimple](basePath string, dataUnit T, saveOptions ...
 		return errors.New(fmt.Sprint(`SaveFlatFile`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, `unsupported file type`))
 	}
 
-	os.MkdirAll(filepath.Dir(path), os.ModePerm)
+	if err := os.MkdirAll(filepath.Dir(path), saveDirPerm); err != nil {
+		return errors.New(fmt.Sprint(`SaveFlatFile`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
+	}
 
 	bytes, err := yaml.Marshal(dataUnit)
 	if err != nil {
@@ -232,20 +239,8 @@ func SaveFlatFile[T LoadableSimple](basePath string, dataUnit T, saveOptions ...
 		saveFilePath += `.new`
 	}
 
-	//
-	// write to .new suffix in case of power loss etc.
-	//
-	if err := os.WriteFile(saveFilePath, bytes, 0777); err != nil {
+	if err := saveFileWithMode(path, saveFilePath, bytes, saveFilePerm, carefulSave); err != nil {
 		return errors.New(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
-	}
-
-	if carefulSave {
-		//
-		// Once the file is written, rename it to remove the .new suffix and overwrite the old file
-		//
-		if err := os.Rename(saveFilePath, path); err != nil {
-			return errors.New(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
-		}
 	}
 
 	return nil
@@ -306,20 +301,8 @@ func SaveAllFlatFiles[K comparable, T Loadable[K]](basePath string, data map[K]T
 					saveFilePath += `.new`
 				}
 
-				//
-				// write to .new suffix in case of power loss etc.
-				//
-				if err := os.WriteFile(saveFilePath, bytes, 0777); err != nil {
+				if err := saveFileWithMode(path, saveFilePath, bytes, saveFilePerm, carefulSave); err != nil {
 					panic(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
-				}
-
-				if carefulSave {
-					//
-					// Once the file is written, rename it to remove the .new suffix and overwrite the old file
-					//
-					if err := os.Rename(saveFilePath, path); err != nil {
-						panic(fmt.Sprint(`SaveAllFlatFiles`, `basePath`, basePath, `type`, fmt.Sprintf(`%T`, *new(T)), `path`, path, `err`, err))
-					}
 				}
 
 				// count saves
@@ -342,6 +325,35 @@ func SaveAllFlatFiles[K comparable, T Loadable[K]](basePath string, data map[K]T
 	wg.Wait()
 
 	return int(saveCt), nil
+}
+
+func saveFileWithMode(path string, saveFilePath string, data []byte, mode os.FileMode, carefulSave bool) error {
+
+	//
+	// write to .new suffix in case of power loss etc.
+	//
+	if err := os.WriteFile(saveFilePath, data, mode); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(saveFilePath, mode); err != nil {
+		return err
+	}
+
+	if carefulSave {
+		//
+		// Once the file is written, rename it to remove the .new suffix and overwrite the old file
+		//
+		if err := os.Rename(saveFilePath, path); err != nil {
+			return err
+		}
+	}
+
+	if err := os.Chmod(path, mode); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func CopyFileContents(src, dst string) (err error) {

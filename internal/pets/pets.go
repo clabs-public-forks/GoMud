@@ -2,7 +2,6 @@ package pets
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -144,7 +143,7 @@ func (p *Pet) Save() error {
 
 	saveFilePath := util.FilePath(configs.GetFilePathsConfig().DataFiles.String(), `/`, `pets`, `/`, fmt.Sprintf("%s.yaml", fileName))
 
-	err = os.WriteFile(saveFilePath, bytes, 0644)
+	err = util.SaveWithMode(saveFilePath, bytes, 0o644)
 	if err != nil {
 		return err
 	}

@@ -35,7 +35,9 @@ func CreateNewSpellFile(newSpellInfo SpellData) (string, error) {
 	allSpells[newSpellInfo.Id()] = &newSpellInfo
 
 	newScriptPath := newSpellInfo.GetScriptPath()
-	os.MkdirAll(filepath.Dir(newScriptPath), os.ModePerm)
+	if err := os.MkdirAll(filepath.Dir(newScriptPath), 0o755); err != nil {
+		return ``, err
+	}
 
 	fileloader.CopyFileContents(util.FilePath(`_datafiles/sample-scripts/spells/`+string(newSpellInfo.Type)+`.js`),
 		newScriptPath)

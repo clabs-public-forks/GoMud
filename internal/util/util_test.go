@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,10 @@ import (
 // Because turnCount, roundCount and timeTrackers are package-level globals,
 // it can be good practice to reset them in a TestMain or individually in tests.
 // But for simplicity, each test that needs a reset can just do so in the test body.
+
+func supportsPOSIXFileModes() bool {
+	return runtime.GOOS != "windows"
+}
 
 func TestLockMud(t *testing.T) {
 	// Basic concurrency test to make sure LockMud / UnlockMud do not panic
@@ -845,6 +850,93 @@ func TestSave(t *testing.T) {
 	}
 	if !bytes.Equal(contents, data) {
 		t.Errorf("saved file mismatch: got %q, want %q", contents, data)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if supportsPOSIXFileModes() && info.Mode().Perm()&0o022 != 0 {
+		gotPerms := info.Mode().Perm()
+		t.Fatalf("Save created a group/world-writable file: %o", gotPerms)
+	}
+}
+
+func TestSaveWithMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+	data := []byte("testing private save")
+
+	err := SaveWithMode(path, data, 0o600)
+	if err != nil {
+		t.Fatalf("SaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms&0o077 != 0 {
+		t.Fatalf("SaveWithMode created a non-private file: %o", gotPerms)
+	}
+}
+
+func TestSaveWithModeReplacesExistingPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+
+	if err := os.WriteFile(path, []byte("old"), 0o666); err != nil {
+		t.Fatalf("unable to create existing file: %v", err)
+	}
+
+	if err := os.Chmod(path, 0o666); err != nil {
+		t.Fatalf("unable to widen file permissions: %v", err)
+	}
+
+	if err := SaveWithMode(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("SaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
+		t.Fatalf("SaveWithMode kept insecure permissions: %o", gotPerms)
+	}
+}
+
+func TestSafeSaveWithModeReplacesExistingPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "private.txt")
+
+	if err := os.WriteFile(path, []byte("old"), 0o666); err != nil {
+		t.Fatalf("unable to create existing file: %v", err)
+	}
+
+	if err := os.Chmod(path, 0o666); err != nil {
+		t.Fatalf("unable to widen file permissions: %v", err)
+	}
+
+	if err := SafeSaveWithMode(path, []byte("new"), 0o600); err != nil {
+		t.Fatalf("SafeSaveWithMode failed: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("unable to stat saved file: %v", err)
+	}
+	if !supportsPOSIXFileModes() {
+		t.Skip("exact Unix permission bits are not portable on Windows")
+	}
+	if gotPerms := info.Mode().Perm(); gotPerms != 0o600 {
+		t.Fatalf("SafeSaveWithMode kept insecure permissions: %o", gotPerms)
 	}
 }
 
