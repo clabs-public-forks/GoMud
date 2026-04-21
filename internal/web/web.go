@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -371,6 +372,8 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 		SetHTTPSStatus(status)
 		logHTTPSStatus(status)
 
+		var autoHTTPSRedirectReady atomic.Bool
+
 		if err := os.MkdirAll(httpsPlan.cacheDir, 0700); err != nil {
 			mudlog.Error("HTTPS", "error", fmt.Errorf("Error creating HTTPS cache dir: %w", err), "cacheDir", httpsPlan.cacheDir)
 			httpsPlan.mode = httpsModeHTTPOnly
@@ -390,7 +393,7 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 
 		httpServer = &http.Server{
 			Addr:    fmt.Sprintf(`:%d`, networkConfig.HttpPort),
-			Handler: buildAutoHTTPHandler(manager, networkConfig, http.DefaultServeMux),
+			Handler: buildAutoHTTPHandler(manager, networkConfig, http.DefaultServeMux, autoHTTPSRedirectReady.Load),
 		}
 
 		baseTLSConfig := manager.TLSConfig()
@@ -402,6 +405,7 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 
 			cert, err := baseGetCertificate(hello)
 			if err == nil {
+				autoHTTPSRedirectReady.Store(true)
 				if leaf, leafErr := firstLeafCertificate(cert); leafErr == nil {
 					UpdateHTTPSStatus(func(status *HTTPSStatus) {
 						setCertificateInfo(status, leaf)
@@ -409,6 +413,7 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 					})
 				}
 			} else {
+				autoHTTPSRedirectReady.Store(false)
 				UpdateHTTPSStatus(func(status *HTTPSStatus) {
 					status.LastError = err.Error()
 				})
@@ -431,6 +436,7 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 		go func() {
 			defer wg.Done()
 			if err := httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				autoHTTPSRedirectReady.Store(false)
 				UpdateHTTPSStatus(func(status *HTTPSStatus) {
 					markHTTPSStartupFailure(status, err)
 					status.NextSteps = append(status.NextSteps, describeListenError(int(networkConfig.HttpsPort), err)...)
@@ -500,13 +506,23 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 
 }
 
-func buildAutoHTTPHandler(manager *autocert.Manager, networkConfig configs.Network, fallback http.Handler) http.Handler {
+func buildAutoHTTPHandler(manager *autocert.Manager, networkConfig configs.Network, fallback http.Handler, redirectReady func() bool) http.Handler {
 	if fallback == nil {
 		fallback = http.DefaultServeMux
 	}
 
 	if bool(networkConfig.HttpsRedirect) {
+		if redirectReady == nil {
+			redirectReady = func() bool { return true }
+		}
+
+		redirectFallback := fallback
 		fallback = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !redirectReady() {
+				redirectFallback.ServeHTTP(w, r)
+				return
+			}
+
 			target := buildHTTPSRedirectTarget(r.Host, int(networkConfig.HttpsPort), r.RequestURI)
 			http.Redirect(w, r, target, http.StatusMovedPermanently)
 		})

@@ -164,6 +164,10 @@ func readHTTPSSetupConfig(t *testing.T, configPath string) string {
 func runHTTPSSetup(t *testing.T, configPath string, input string) string {
 	t.Helper()
 
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("skipping https-setup helper test: sh is not available")
+	}
+
 	scriptDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("os.Getwd() error = %v", err)

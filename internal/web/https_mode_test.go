@@ -348,7 +348,7 @@ func TestBuildAutoHTTPHandlerPassesThroughWhenRedirectDisabled(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := buildAutoHTTPHandler(manager, network, fallback)
+	handler := buildAutoHTTPHandler(manager, network, fallback, nil)
 	req := httptest.NewRequest(http.MethodGet, "/webclient", nil)
 	req.Host = "play.example.com"
 	rec := httptest.NewRecorder()
@@ -360,7 +360,7 @@ func TestBuildAutoHTTPHandlerPassesThroughWhenRedirectDisabled(t *testing.T) {
 	}
 }
 
-func TestBuildAutoHTTPHandlerRedirectsWhenEnabled(t *testing.T) {
+func TestBuildAutoHTTPHandlerFallsBackUntilRedirectReady(t *testing.T) {
 	manager := &autocert.Manager{
 		HostPolicy: autocert.HostWhitelist("play.example.com"),
 	}
@@ -371,10 +371,36 @@ func TestBuildAutoHTTPHandlerRedirectsWhenEnabled(t *testing.T) {
 	}
 
 	fallback := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("fallback should not be used when redirect is enabled")
+		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := buildAutoHTTPHandler(manager, network, fallback)
+	handler := buildAutoHTTPHandler(manager, network, fallback, func() bool { return false })
+	req := httptest.NewRequest(http.MethodGet, "/webclient?x=1", nil)
+	req.Host = "play.example.com"
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("buildAutoHTTPHandler() status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+}
+
+func TestBuildAutoHTTPHandlerRedirectsWhenEnabledAndReady(t *testing.T) {
+	manager := &autocert.Manager{
+		HostPolicy: autocert.HostWhitelist("play.example.com"),
+	}
+	network := configs.Network{
+		HttpPort:      80,
+		HttpsPort:     443,
+		HttpsRedirect: true,
+	}
+
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("fallback should not be used when redirect is enabled and ready")
+	})
+
+	handler := buildAutoHTTPHandler(manager, network, fallback, func() bool { return true })
 	req := httptest.NewRequest(http.MethodGet, "/webclient?x=1", nil)
 	req.Host = "play.example.com"
 	rec := httptest.NewRecorder()
@@ -405,7 +431,7 @@ func TestBuildAutoHTTPHandlerInterceptsACMEChallenge(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := buildAutoHTTPHandler(manager, network, fallback)
+	handler := buildAutoHTTPHandler(manager, network, fallback, nil)
 	req := httptest.NewRequest(http.MethodGet, "/.well-known/acme-challenge/token", nil)
 	req.Host = "invalid.example"
 	rec := httptest.NewRecorder()
