@@ -1,5 +1,6 @@
 {{template "header" .}}
 {{$status := .httpsStatus}}
+{{$probeHost := httpsDiagnosticHost $status.Host}}
 
 <div class="container-fluid">
     <div class="row">
@@ -83,10 +84,13 @@
             <div class="card mb-4">
                 <div class="card-header">Useful Commands</div>
                 <div class="card-body">
+                    {{if httpsUsesExampleHost $status.Host}}
+                    <p class="mb-2 text-muted">Replace <code>{{$probeHost}}</code> with your public hostname before testing automatic HTTPS.</p>
+                    {{end}}
                     <pre class="mb-0">ss -ltnp | rg ':80|:443'
-dig +short {{if $status.Host}}{{$status.Host}}{{else}}example.com{{end}}
-curl -I http://{{if $status.Host}}{{$status.Host}}{{else}}localhost{{end}}/
-curl -vk https://{{if $status.Host}}{{$status.Host}}{{else}}localhost{{end}}/</pre>
+dig +short {{$probeHost}}
+curl -I http://{{$probeHost}}/
+curl -vk https://{{$probeHost}}/</pre>
                 </div>
             </div>
         </div>
