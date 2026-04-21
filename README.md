@@ -115,6 +115,20 @@ make https-setup
 
 The helper updates `_datafiles/config.yaml` and writes a timestamped backup before making changes.
 
+### Automatic HTTPS
+
+GoMud can now obtain and renew Let's Encrypt certificates itself for simple single-server installs.
+
+- Set `FilePaths.WebDomain` to your public DNS name.
+- Leave `FilePaths.HttpsCertFile` and `FilePaths.HttpsKeyFile` empty unless you want to supply your own certificate files.
+- Set `Network.HttpPort` to `80` and `Network.HttpsPort` to `443`.
+- Optional: set `FilePaths.HttpsEmail` to receive certificate expiry notices.
+- Point your DNS name at the server and make sure inbound ports `80` and `443` are reachable.
+
+If automatic HTTPS cannot be completed, GoMud keeps serving HTTP and logs the exact reason. Local development on `localhost` should continue to use plain HTTP.
+
+When the admin interface is enabled, `/admin/https/` shows the current HTTPS mode, the checks GoMud ran, and the next steps needed to finish setup.
+
 Default seeded credentials in the bundled world:
 
 - Username: `admin`
