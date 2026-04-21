@@ -35,7 +35,6 @@ help:
       - shout
       - broadcast
       - whisper
-      - inbox
     shops:
       - appraise
       - bank
@@ -132,7 +131,6 @@ help:
       - grant
       - locate
       - modify
-      - mudmail
       - mute
       - paz
       - prepare
@@ -183,6 +181,7 @@ help-aliases:
   pvp:              ['pk']
   about:            ['gomud']
   stat-train:       ['stat train', 'status train', 'stat points']
+  train:            ['trainer']
 # Default aliases for commands
 # For example: inv -> inventory
 # They can be command + argument aliases
@@ -231,6 +230,7 @@ command-aliases:
   'rank front':       ['frontrank']
   'help about':       ['about']
   'set screenreader': ['screenreader']
+  'consider':         ['con']
   
   # Direction aliases
 direction-aliases:

@@ -212,6 +212,11 @@ FilePaths:
   #   Used to negotiate TLS/https requests
   HttpsCertFile: ""
   HttpsKeyFile: ""
+  # - SSHHostKeyFile -
+  #   Path to a PEM-encoded SSH host private key file.
+  #   Required when SSHPort is non-zero. Generate with:
+  #     ssh-keygen -t ed25519 -f ssh_host_key -N ""
+  SSHHostKeyFile: ""
 
 ################################################################################
 #
@@ -309,6 +314,16 @@ GamePlay:
   # - MobConverseChance -
   #   Chance in 100 that the mob will attempt to converse when idle.
   MobConverseChance: 3
+  # Party settings
+  Party:
+    # - MaxPlayerCount -
+    #   Maximum number of players allowed in a party.
+    #   Set to 0 for unlimited.
+    MaxPlayerCount: 0
+    # - SameRoomOnly -
+    #   If true, players must be in the same room to create, invite, or join a party.
+    #   If false, players can form and join parties from anywhere in the world.
+    SameRoomOnly: false
 
 ################################################################################
 #
@@ -399,6 +414,14 @@ Network:
   #   If true, will send all http traffic to https with a redirect
   #   Requires both Http and Https to be working.
   HttpsRedirect: false
+  # - SSHPort -
+  #   The port the server listens on for SSH connections.
+  #   Requires SSHHostKeyFile to be set (See FilePaths).
+  #   0 (zero) means disabled.
+  SSHPort: 33332
+  # - MaxSSHConnections -
+  #   The maximum number of SSH connections the server will accept.
+  MaxSSHConnections: 100
   # - AfkSeconds -
   #   If this many seconds pass without player input, they are flagged as afk
   #   Set to zero to never mark anyone as AFK
@@ -412,10 +435,10 @@ Network:
   #   Whether Admin/Mod users get timed out when reaching MaxIdleSeconds
   #   If set to false, Admins & Mods never get force disconnected.
   TimeoutMods: false
-    # - ZombieSeconds -
+  # - LinkDeadSeconds -
   #   How many seconds a character stays active/in game after a network connection
   #   is lost. Set to 0 to instantly log out characters (exploitable).
-  ZombieSeconds: 60
+  LinkDeadSeconds: 60
   # - LogoutRounds -
   #   How many rounds of meditation a player must complete before they are
   #   logged out. If interrupted, they must start over.

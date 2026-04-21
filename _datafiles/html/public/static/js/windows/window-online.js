@@ -1,5 +1,3 @@
-/* global Client, VirtualWindow, VirtualWindows, injectStyles */
-
 /**
  * window-online.js
  *
@@ -79,8 +77,30 @@
             padding-left: 10px;
         }
 
-        .online-col-title {
+        .online-col-profession {
             flex: 1;
+            min-width: 0;
+            padding-left: 10px;
+            overflow: hidden;
+        }
+
+        .online-col-alignment {
+            width: 68px;
+            flex-shrink: 0;
+            padding-left: 10px;
+            overflow: hidden;
+        }
+
+        .online-col-time {
+            width: 44px;
+            flex-shrink: 0;
+            padding-left: 10px;
+            overflow: hidden;
+        }
+
+        .online-col-role {
+            width: 44px;
+            flex-shrink: 0;
             padding-left: 10px;
             overflow: hidden;
         }
@@ -140,11 +160,48 @@
             white-space: nowrap;
         }
 
-        .online-player-title {
-            color: #7ab8a0;
+        .online-player-profession {
+            color: #c8e0ff;
             font-family: Arial, sans-serif;
             font-size: 0.75em;
             flex: 1;
+            min-width: 0;
+            padding-left: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .online-player-alignment {
+            color: #7ab8a0;
+            font-family: Arial, sans-serif;
+            font-size: 0.75em;
+            width: 68px;
+            flex-shrink: 0;
+            padding-left: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .online-player-time {
+            color: #a07ab8;
+            font-family: monospace;
+            font-size: 0.75em;
+            width: 44px;
+            flex-shrink: 0;
+            padding-left: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .online-player-role {
+            color: #b8a07a;
+            font-family: Arial, sans-serif;
+            font-size: 0.75em;
+            width: 44px;
+            flex-shrink: 0;
             padding-left: 10px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -185,7 +242,7 @@
         const colHeaders = document.createElement('div');
         colHeaders.id = 'online-col-headers';
 
-        [['online-col-lvl', 'Lvl'], ['online-col-name', 'Name'], ['online-col-title', 'Title']].forEach(function(col) {
+        [['online-col-lvl', 'Lvl'], ['online-col-name', 'Name'], ['online-col-profession', 'Profession'], ['online-col-alignment', 'Alignment'], ['online-col-time', 'Time'], ['online-col-role', 'Role']].forEach(function(col) {
             const cell = document.createElement('div');
             cell.className = col[0];
             const text = document.createElement('span');
@@ -216,6 +273,11 @@
         offOnLoad:     true,
         factory() {
             const el = createDOM();
+            // Request a fresh payload from the server. The response will
+            // arrive as a normal GMCP message and flow through update().
+            Client.GMCPRequest('Game');
+            // Populate from already-stored data after the dock has settled.
+            requestAnimationFrame(function() { update(); });
             return {
                 title:      'Online',
                 mount:      el,
@@ -223,7 +285,7 @@
                 border:     1,
                 x:          'right',
                 y:          0,
-                width:      363,
+                width:      480,
                 height:     220,
                 header:     20,
                 bottom:     60,
@@ -262,13 +324,28 @@
             name.className = 'online-player-name';
             name.textContent = p.name || '';
 
-            const title = document.createElement('span');
-            title.className = 'online-player-title';
-            title.textContent = p.title || '';
+            const profession = document.createElement('span');
+            profession.className = 'online-player-profession';
+            profession.textContent = p.profession || '';
+
+            const alignment = document.createElement('span');
+            alignment.className = 'online-player-alignment';
+            alignment.textContent = p.alignment || '';
+
+            const time = document.createElement('span');
+            time.className = 'online-player-time';
+            time.textContent = p.time_online || '';
+
+            const role = document.createElement('span');
+            role.className = 'online-player-role';
+            role.textContent = p.role || '';
 
             row.appendChild(lvl);
             row.appendChild(name);
-            row.appendChild(title);
+            row.appendChild(profession);
+            row.appendChild(alignment);
+            row.appendChild(time);
+            row.appendChild(role);
             list.appendChild(row);
         });
     }
@@ -279,10 +356,7 @@
     function update() {
         const game = Client.GMCPStructs.Game;
         if (!game || !game.Who || !Array.isArray(game.Who.Players)) { return; }
-
-        win.open();
         if (!win.isOpen()) { return; }
-
         render(game.Who.Players);
     }
 
@@ -291,6 +365,14 @@
     // -----------------------------------------------------------------------
     VirtualWindows.register({
         window:       win,
+        gmcpHandlers: ['Game'],
+        onGMCP() { update(); },
+    });
+
+    // Second registration with no window so the handler always fires,
+    // keeping the DOM current even while the window is hidden.
+    VirtualWindows.register({
+        window:       null,
         gmcpHandlers: ['Game'],
         onGMCP() { update(); },
     });

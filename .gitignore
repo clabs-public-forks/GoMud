@@ -1,4 +1,5 @@
 .vscode
+bin/
 private-notes.txt
 _datafiles/**/users/*
 _datafiles/**/plugin-data/*
@@ -8,5 +9,7 @@ _datafiles/**/plugin-data/*
 vendor/
 server.crt
 server.key
+ssh_host_key
+ssh_host_key.pub
 tmp-gomud.exe
 __debug*
