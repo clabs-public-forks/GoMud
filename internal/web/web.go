@@ -382,14 +382,7 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 
 				var redirectHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
-					host := r.Host
-					// If the host header includes a port (e.g. "example.com:80"), strip it out.
-					if strings.Contains(host, ":") {
-						host, _, _ = net.SplitHostPort(host)
-					}
-
-					// Build the target URL with your known HTTPS port (443 in this case).
-					target := fmt.Sprintf("https://%s:%d%s", host, networkConfig.HttpsPort, r.RequestURI)
+					target := buildHTTPSRedirectTarget(r.Host, int(networkConfig.HttpsPort), r.RequestURI)
 
 					http.Redirect(w, r, target, http.StatusMovedPermanently)
 				}
@@ -415,6 +408,24 @@ func Listen(wg *sync.WaitGroup, webSocketHandler func(*websocket.Conn)) {
 
 }
 
+func buildHTTPSRedirectTarget(host string, httpsPort int, requestURI string) string {
+	if strings.Contains(host, ":") {
+		if splitHost, _, err := net.SplitHostPort(host); err == nil {
+			host = splitHost
+		}
+	}
+
+	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
+		host = "[" + host + "]"
+	}
+
+	if httpsPort == 443 {
+		return fmt.Sprintf("https://%s%s", host, requestURI)
+	}
+
+	return fmt.Sprintf("https://%s:%d%s", host, httpsPort, requestURI)
+}
+
 // This wraps the handler functiojn with a game lock (mutex) to keep the mud from
 // Concurrently accessing the same memory
 func RunWithMUDLocked(next http.HandlerFunc) http.HandlerFunc {
@@ -436,13 +447,13 @@ func Shutdown() {
 		if err := httpServer.Shutdown(ctx); err != nil {
 			mudlog.Error("HTTP", "error", fmt.Errorf("HTTP server shutdown failed: %w", err))
 		} else {
-			mudlog.Info("HTTPS", "stage", "stopped")
+			mudlog.Info("HTTP", "stage", "stopped")
 		}
 	}
 
 	if httpsServer != nil {
 		if err := httpsServer.Shutdown(ctx); err != nil {
-			mudlog.Error("HTTPS", "error", fmt.Errorf("HTTP server shutdown failed: %w", err))
+			mudlog.Error("HTTPS", "error", fmt.Errorf("HTTPS server shutdown failed: %w", err))
 		} else {
 			mudlog.Info("HTTPS", "stage", "stopped")
 		}
