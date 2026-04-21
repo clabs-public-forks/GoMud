@@ -1,6 +1,6 @@
 module github.com/GoMudEngine/GoMud
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
@@ -30,4 +30,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
+require (
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+)
