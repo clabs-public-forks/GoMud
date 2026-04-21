@@ -13,7 +13,6 @@ func RegisterListeners() {
 	// RoomChange Listeners
 	events.RegisterListener(events.RoomChange{}, LocationMusicChange)
 	events.RegisterListener(events.RoomChange{}, CleanupEphemeralRooms)
-	events.RegisterListener(events.RoomChange{}, SpawnGuide)
 
 	// NewRound Listeners
 	events.RegisterListener(events.NewRound{}, PruneVMs)
@@ -36,7 +35,7 @@ func RegisterListeners() {
 	events.RegisterListener(events.MobIdle{}, HandleIdleMobs)
 
 	// Turn Hooks
-	events.RegisterListener(events.NewTurn{}, CleanupZombies)
+	events.RegisterListener(events.NewTurn{}, CleanupLinkDead)
 	events.RegisterListener(events.NewTurn{}, AutoSave)
 	events.RegisterListener(events.NewTurn{}, PruneBuffs)
 	events.RegisterListener(events.NewTurn{}, ActionPoints)
@@ -54,7 +53,6 @@ func RegisterListeners() {
 
 	// Levelup Notifications
 	events.RegisterListener(events.LevelUp{}, SendLevelNotifications)
-	events.RegisterListener(events.LevelUp{}, CheckGuide)
 
 	// Day/Night cycle
 	events.RegisterListener(events.DayNightCycle{}, NotifySunriseSunset)

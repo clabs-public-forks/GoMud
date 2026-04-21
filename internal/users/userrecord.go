@@ -55,7 +55,7 @@ type UserRecord struct {
 	lastInputRound uint64
 	tempDataStore  map[string]any
 	activePrompt   *prompt.Prompt
-	isZombie       bool // are they a zombie currently?
+	isLinkDead     bool // are they a link-dead connection currently?
 	inputBlocked   bool // Whether input is currently intentionally turned off (for a certain category of commands)
 }
 
@@ -643,6 +643,15 @@ func (u *UserRecord) GetOnlineInfo() OnlineInfo {
 		isAfk = true
 	}
 
+	connType := `telnet`
+	if cd := connections.Get(u.connectionId); cd != nil {
+		if cd.IsWebSocket() {
+			connType = `websocket`
+		} else if cd.IsSSH() {
+			connType = `ssh`
+		}
+	}
+
 	return OnlineInfo{
 		u.Username,
 		u.Character.Name,
@@ -653,6 +662,7 @@ func (u *UserRecord) GetOnlineInfo() OnlineInfo {
 		timeStr,
 		isAfk,
 		u.Role,
+		connType,
 	}
 }
 

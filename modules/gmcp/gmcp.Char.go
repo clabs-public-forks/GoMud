@@ -13,6 +13,7 @@ import (
 	"github.com/GoMudEngine/GoMud/internal/mudlog"
 	"github.com/GoMudEngine/GoMud/internal/plugins"
 	"github.com/GoMudEngine/GoMud/internal/quests"
+	"github.com/GoMudEngine/GoMud/internal/races"
 	"github.com/GoMudEngine/GoMud/internal/rooms"
 	"github.com/GoMudEngine/GoMud/internal/skills"
 	"github.com/GoMudEngine/GoMud/internal/users"
@@ -50,6 +51,9 @@ func init() {
 
 	events.RegisterListener(events.Quest{}, g.questProgressHandler, events.Last)
 
+	events.RegisterListener(events.MobDeath{}, g.killsChangedHandler)
+	events.RegisterListener(events.PlayerDeath{}, g.killsChangedHandler)
+
 }
 
 type GMCPCharModule struct {
@@ -80,6 +84,32 @@ func (g *GMCPCharModule) questProgressHandler(e events.Event) events.ListenerRet
 		UserId:     evt.UserId,
 		Identifier: `Char.Quests`,
 	})
+
+	return events.Continue
+}
+
+func (g *GMCPCharModule) killsChangedHandler(e events.Event) events.ListenerReturn {
+
+	var userIds []int
+
+	switch evt := e.(type) {
+	case events.MobDeath:
+		userIds = evt.KilledByUsers
+	case events.PlayerDeath:
+		userIds = []int{evt.UserId}
+	default:
+		return events.Continue
+	}
+
+	for _, userId := range userIds {
+		if userId == 0 {
+			continue
+		}
+		events.AddToQueue(GMCPCharUpdate{
+			UserId:     userId,
+			Identifier: `Char.Kills`,
+		})
+	}
 
 	return events.Continue
 }
@@ -208,7 +238,7 @@ func (g *GMCPCharModule) equipmentChangeHandler(e events.Event) events.ListenerR
 	statsToChange := ``
 
 	if len(evt.ItemsRemoved) > 0 || len(evt.ItemsWorn) > 0 {
-		statsToChange += `Char.Inventory, Char.Stats, Char.Vitals`
+		statsToChange += `Char.Inventory, Char.Stats, Char.Vitals, Char.Affects`
 	}
 
 	// If only gold or bank changed
@@ -242,7 +272,7 @@ func (g *GMCPCharModule) charTrainedHandler(e events.Event) events.ListenerRetur
 	}
 
 	// Changing equipment might affect stats, inventory, maxhp/maxmp etc
-	events.AddToQueue(GMCPCharUpdate{UserId: evt.UserId, Identifier: `Char.Stats, Char.Worth, Char.Vitals, Char.Inventory.Backpack.Summary`})
+	events.AddToQueue(GMCPCharUpdate{UserId: evt.UserId, Identifier: `Char.Info, Char.Stats, Char.Worth, Char.Vitals, Char.Inventory.Backpack.Summary, Char.Skills, Char.Jobs`})
 
 	return events.Continue
 }
@@ -344,12 +374,15 @@ func (g *GMCPCharModule) GetCharNode(user *users.UserRecord, gmcpModule string) 
 
 	if all || g.wantsGMCPPayload(`Char.Info`, gmcpModule) {
 		payload.Info = &GMCPCharModule_Payload_Info{
-			Account:   user.Username,
-			Name:      user.Character.Name,
-			Class:     skills.GetProfession(user.Character.GetAllSkillRanks()),
-			Race:      user.Character.Race(),
-			Alignment: user.Character.AlignmentName(),
-			Level:     user.Character.Level,
+			Account:        user.Username,
+			Name:           user.Character.Name,
+			Class:          skills.GetProfession(user.Character.GetAllSkillRanks()),
+			Race:           user.Character.Race(),
+			Alignment:      user.Character.AlignmentName(),
+			Level:          user.Character.Level,
+			Role:           user.Role,
+			SkillPoints:    user.Character.StatPoints,
+			TrainingPoints: user.Character.TrainingPoints,
 		}
 
 		if !all {
@@ -475,12 +508,18 @@ func (g *GMCPCharModule) GetCharNode(user *users.UserRecord, gmcpModule string) 
 	if all || g.wantsGMCPPayload(`Char.Stats`, gmcpModule) {
 
 		payload.Stats = &GMCPCharModule_Payload_Stats{
-			Strength:   user.Character.Stats.Strength.ValueAdj,
-			Speed:      user.Character.Stats.Speed.ValueAdj,
-			Smarts:     user.Character.Stats.Smarts.ValueAdj,
-			Vitality:   user.Character.Stats.Vitality.ValueAdj,
-			Mysticism:  user.Character.Stats.Mysticism.ValueAdj,
-			Perception: user.Character.Stats.Perception.ValueAdj,
+			Strength:      user.Character.Stats.Strength.ValueAdj,
+			StrengthMod:   user.Character.StatMod(`strength`),
+			Speed:         user.Character.Stats.Speed.ValueAdj,
+			SpeedMod:      user.Character.StatMod(`speed`),
+			Smarts:        user.Character.Stats.Smarts.ValueAdj,
+			SmartsMod:     user.Character.StatMod(`smarts`),
+			Vitality:      user.Character.Stats.Vitality.ValueAdj,
+			VitalityMod:   user.Character.StatMod(`vitality`),
+			Mysticism:     user.Character.Stats.Mysticism.ValueAdj,
+			MysticismMod:  user.Character.StatMod(`mysticism`),
+			Perception:    user.Character.Stats.Perception.ValueAdj,
+			PerceptionMod: user.Character.StatMod(`perception`),
 		}
 
 		if !all {
@@ -505,12 +544,10 @@ func (g *GMCPCharModule) GetCharNode(user *users.UserRecord, gmcpModule string) 
 	if all || g.wantsGMCPPayload(`Char.Worth`, gmcpModule) {
 
 		payload.Worth = &GMCPCharModule_Payload_Worth{
-			Gold:           user.Character.Gold,
-			Bank:           user.Character.Bank,
-			SkillPoints:    user.Character.StatPoints,
-			TrainingPoints: user.Character.TrainingPoints,
-			TNL:            user.Character.XPTL(user.Character.Level),
-			XP:             user.Character.Experience,
+			Gold: user.Character.Gold,
+			Bank: user.Character.Bank,
+			TNL:  user.Character.XPTL(user.Character.Level),
+			XP:   user.Character.Experience,
 		}
 
 		if !all {
@@ -621,6 +658,95 @@ func (g *GMCPCharModule) GetCharNode(user *users.UserRecord, gmcpModule string) 
 		}
 	}
 
+	if all || g.wantsGMCPPayload(`Char.Skills`, gmcpModule) {
+
+		payload.Skills = []GMCPCharModule_Payload_Skill{}
+
+		for skillName, skillLevel := range user.Character.GetSkills() {
+			payload.Skills = append(payload.Skills, GMCPCharModule_Payload_Skill{
+				Name:    skillName,
+				Level:   skillLevel,
+				Maximum: skillLevel >= 4,
+			})
+		}
+
+		if !all {
+			return payload.Skills, `Char.Skills`
+		}
+	}
+
+	if all || g.wantsGMCPPayload(`Char.Jobs`, gmcpModule) {
+
+		payload.Jobs = []GMCPCharModule_Payload_Job{}
+
+		allRanks := user.Character.GetAllSkillRanks()
+		for _, rank := range skills.GetProfessionRanks(allRanks) {
+			payload.Jobs = append(payload.Jobs, GMCPCharModule_Payload_Job{
+				Name:        rank.Profession,
+				Proficiency: rank.ExperienceTitle,
+				Completion:  int(math.Floor(rank.Completion * 100)),
+			})
+		}
+
+		if !all {
+			return payload.Jobs, `Char.Jobs`
+		}
+	}
+
+	if all || g.wantsGMCPPayload(`Char.Kills`, gmcpModule) {
+
+		mobKills := map[string]int{}
+		raceKills := map[string]int{}
+		areaKills := map[string]int{}
+		charKills := map[string]GMCPCharModule_Payload_Kills_PvpEntry{}
+
+		totalMobKills := 0
+		totalPvpKills := 0
+
+		for mid, kCt := range user.Character.KD.Kills {
+			if mobSpec := mobs.GetMobSpec(mobs.MobId(mid)); mobSpec != nil {
+				totalMobKills += kCt
+				mobKills[mobSpec.Character.Name] = mobKills[mobSpec.Character.Name] + kCt
+				if raceInfo := races.GetRace(mobSpec.Character.RaceId); raceInfo != nil {
+					raceKills[raceInfo.Name] = raceKills[raceInfo.Name] + kCt
+				}
+				areaKills[mobSpec.Zone] = areaKills[mobSpec.Zone] + kCt
+			}
+		}
+
+		for userIdNameStr, killCount := range user.Character.KD.PlayerKills {
+			parts := strings.Split(userIdNameStr, `:`)
+			if len(parts) == 2 {
+				charKills[parts[1]] = GMCPCharModule_Payload_Kills_PvpEntry{Count: killCount}
+			}
+			totalPvpKills++
+		}
+
+		mobKDRatio := user.Character.KD.GetMobKDRatio()
+		pvpKDRatio := user.Character.KD.GetPvpKDRatio()
+
+		payload.Kills = &GMCPCharModule_Payload_Kills{
+			Mob: GMCPCharModule_Payload_Kills_Section{
+				Total:   totalMobKills,
+				Deaths:  user.Character.KD.GetMobDeaths(),
+				KDRatio: mobKDRatio,
+				ByName:  mobKills,
+				ByRace:  raceKills,
+				ByArea:  areaKills,
+			},
+			Pvp: GMCPCharModule_Payload_Kills_PvpSection{
+				Total:   totalPvpKills,
+				Deaths:  user.Character.KD.GetPvpDeaths(),
+				KDRatio: pvpKDRatio,
+				Players: charKills,
+			},
+		}
+
+		if !all {
+			return payload.Kills, `Char.Kills`
+		}
+	}
+
 	// If we reached this point and Char wasn't requested, we have a problem.
 	if !all {
 		mudlog.Error(`gmcp.Char`, `error`, `Bad module requested`, `module`, gmcpModule)
@@ -657,18 +783,24 @@ type GMCPCharModule_Payload struct {
 	Worth     *GMCPCharModule_Payload_Worth            `json:"Worth,omitempty"`
 	Quests    []GMCPCharModule_Payload_Quest           `json:"Quests,omitempty"`
 	Pets      []GMCPCharModule_Payload_Pet             `json:"Pets,omitempty"`
+	Skills    []GMCPCharModule_Payload_Skill           `json:"Skills,omitempty"`
+	Jobs      []GMCPCharModule_Payload_Job             `json:"Jobs,omitempty"`
+	Kills     *GMCPCharModule_Payload_Kills            `json:"Kills,omitempty"`
 }
 
 // /////////////////
 // Char.Info
 // /////////////////
 type GMCPCharModule_Payload_Info struct {
-	Account   string `json:"account,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Class     string `json:"class,omitempty"`
-	Race      string `json:"race,omitempty"`
-	Alignment string `json:"alignment,omitempty"`
-	Level     int    `json:"level,omitempty"`
+	Account        string `json:"account,omitempty"`
+	Name           string `json:"name,omitempty"`
+	Class          string `json:"class,omitempty"`
+	Race           string `json:"race,omitempty"`
+	Alignment      string `json:"alignment,omitempty"`
+	Level          int    `json:"level,omitempty"`
+	Role           string `json:"role"`
+	SkillPoints    int    `json:"skillpoints"`
+	TrainingPoints int    `json:"trainingpoints"`
 }
 
 // /////////////////
@@ -754,12 +886,18 @@ func newInventory_Item(itm items.Item) GMCPCharModule_Payload_Inventory_Item {
 // Char.Stats
 // /////////////////
 type GMCPCharModule_Payload_Stats struct {
-	Strength   int `json:"strength,omitempty"`
-	Speed      int `json:"speed,omitempty"`
-	Smarts     int `json:"smarts,omitempty"`
-	Vitality   int `json:"vitality,omitempty"`
-	Mysticism  int `json:"mysticism,omitempty"`
-	Perception int `json:"perception,omitempty"`
+	Strength      int `json:"strength,omitempty"`
+	StrengthMod   int `json:"strengthmod,omitempty"`
+	Speed         int `json:"speed,omitempty"`
+	SpeedMod      int `json:"speedmod,omitempty"`
+	Smarts        int `json:"smarts,omitempty"`
+	SmartsMod     int `json:"smartsmod,omitempty"`
+	Vitality      int `json:"vitality,omitempty"`
+	VitalityMod   int `json:"vitalitymod,omitempty"`
+	Mysticism     int `json:"mysticism,omitempty"`
+	MysticismMod  int `json:"mysticismmod,omitempty"`
+	Perception    int `json:"perception,omitempty"`
+	PerceptionMod int `json:"perceptionmod,omitempty"`
 }
 
 // /////////////////
@@ -776,12 +914,10 @@ type GMCPCharModule_Payload_Vitals struct {
 // Char.Worth
 // /////////////////
 type GMCPCharModule_Payload_Worth struct {
-	Gold           int `json:"gold_carry,omitempty"`
-	Bank           int `json:"gold_bank,omitempty"`
-	SkillPoints    int `json:"skillpoints,omitempty"`
-	TrainingPoints int `json:"trainingpoints,omitempty"`
-	TNL            int `json:"tnl,omitempty"`
-	XP             int `json:"xp,omitempty"`
+	Gold int `json:"gold_carry,omitempty"`
+	Bank int `json:"gold_bank,omitempty"`
+	TNL  int `json:"tnl,omitempty"`
+	XP   int `json:"xp,omitempty"`
 }
 
 // /////////////////
@@ -812,4 +948,50 @@ type GMCPCharModule_Payload_Pet struct {
 	Name   string `json:"name"`
 	Type   string `json:"type"`
 	Hunger string `json:"hunger"`
+}
+
+// /////////////////
+// Char.Skills
+// /////////////////
+type GMCPCharModule_Payload_Skill struct {
+	Name    string `json:"name"`
+	Level   int    `json:"level"`
+	Maximum bool   `json:"maximum,omitempty"`
+}
+
+// /////////////////
+// Char.Jobs
+// /////////////////
+type GMCPCharModule_Payload_Job struct {
+	Name        string `json:"name"`
+	Completion  int    `json:"completion"`
+	Proficiency string `json:"proficiency"`
+}
+
+// /////////////////
+// Char.Kills
+// /////////////////
+type GMCPCharModule_Payload_Kills struct {
+	Mob GMCPCharModule_Payload_Kills_Section    `json:"mob"`
+	Pvp GMCPCharModule_Payload_Kills_PvpSection `json:"pvp"`
+}
+
+type GMCPCharModule_Payload_Kills_Section struct {
+	Total   int            `json:"total"`
+	Deaths  int            `json:"deaths"`
+	KDRatio float64        `json:"kd_ratio"`
+	ByName  map[string]int `json:"by_name"`
+	ByRace  map[string]int `json:"by_race"`
+	ByArea  map[string]int `json:"by_area"`
+}
+
+type GMCPCharModule_Payload_Kills_PvpSection struct {
+	Total   int                                              `json:"total"`
+	Deaths  int                                              `json:"deaths"`
+	KDRatio float64                                          `json:"kd_ratio"`
+	Players map[string]GMCPCharModule_Payload_Kills_PvpEntry `json:"players"`
+}
+
+type GMCPCharModule_Payload_Kills_PvpEntry struct {
+	Count int `json:"count"`
 }

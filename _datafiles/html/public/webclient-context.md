@@ -8,18 +8,21 @@ create new virtual windows that respond to GMCP payloads.
 ## File Map
 
 ```
-webclient-pure.html                               Page shell, layout, init bridge
+webclient-pure.html                               Page shell, layout, settings modal, init bridge
 static/js/webclient-core.js                      Core infrastructure (loaded first)
 static/js/fx.js                                  Visual effects library (FX global)
 static/js/triggers.js                            Text-trigger engine (Triggers global)
 static/js/windows/window-gametime.js             Time & Date window (left dock)
 static/js/windows/window-character.js            Character window (left dock)
+static/js/windows/window-gear.js                 Gear window (left dock)
 static/js/windows/window-vitals.js               Vitals window (left dock)
-static/js/windows/window-status.js               Status window (left dock)
+static/js/windows/window-status.js               Worth window (left dock)
 static/js/windows/window-party.js                Party window (left dock)
 static/js/windows/window-map.js                  Map window (right dock)
+static/js/windows/window-room.js                 Room Info window (right dock)
+static/js/windows/window-online.js               Online Players window (right dock, off by default)
 static/js/windows/window-comm.js                 Communications window (right dock)
-static/js/windows/window-debug-log.js            Debug Log window (right dock)
+static/js/windows/window-modal.js                Help/content modal overlay (global, no dock)
 static/css/windows.css                           Shared dock/panel styles
 ```
 
@@ -36,18 +39,26 @@ one `<script>` tag in the appropriate dock comment block.
 | File | Title | Tabs | GMCP namespaces |
 |---|---|---|---|
 | `window-gametime.js` | Time & Date | — | `Gametime` |
-| `window-character.js` | Character | Overview, Pack, Quests | `Char.Info`, `Char.Stats`, `Char.Inventory`, `Char.Inventory.Backpack`, `Char.Quests`, `Char` |
+| `window-character.js` | Character | Overview, Quests, Skills, Jobs, Effects | `Char.Info`, `Char.Stats`, `Char.Quests`, `Char.Skills`, `Char.Jobs`, `Char.Affects`, `Char` |
+| `window-gear.js` | Gear | Worn, Backpack | `Char.Inventory`, `Char.Inventory.Backpack`, `Char` |
 | `window-vitals.js` | Vitals | — | `Char.Vitals`, `Char` |
-| `window-status.js` | Status | Worth, Effects | `Char.Worth`, `Char.Affects`, `Char` |
+| `window-status.js` | Worth | — | `Char.Worth`, `Char` |
 | `window-party.js` | Party | — | `Party`, `Party.Vitals` |
 
 ### Right dock
 
-| File | Title | Tabs | GMCP namespaces |
-|---|---|---|---|
-| `window-map.js` | Map | — | `Room` |
-| `window-comm.js` | Communications | Say, Whisper, Party, Broadcasts | `Comm` |
-| `window-debug-log.js` | Debug Log | — | `*` (all namespaces) |
+| File | Title | Tabs | GMCP namespaces | Notes |
+|---|---|---|---|---|
+| `window-map.js` | Map | — | `Room`, `World` | `offOnLoad: false` |
+| `window-room.js` | Room Info | — | `Room.Info` | `offOnLoad: false` |
+| `window-online.js` | Online | — | `Game` | `offOnLoad: true` — hidden until user opens it |
+| `window-comm.js` | Communications | Say, Whisper, Party, Broadcasts | `Comm` | |
+
+### Modal overlay
+
+| File | Global | Trigger |
+|---|---|---|
+| `window-modal.js` | `GameModal` | GMCP `Help` namespace, or `GameModal.open(...)` from any JS |
 
 ---
 
@@ -57,6 +68,7 @@ one `<script>` tag in the appropriate dock comment block.
 
 ```
 injectStyles(css)    Append a <style> block to <head>
+uiMenu(event, items) Spawn a small context menu near a click (see below)
 VirtualWindows       Registry: register(), handleGMCP(), openAll()
 VirtualWindow        Class: lifecycle for a single panel
 DockSlots            Object: { left, right } DockSlot instances (populated by Client.init())
@@ -80,7 +92,7 @@ Triggers             Text-trigger engine: Triggers.Try(str), Triggers.matchPatte
 3. The page `onload` fires, calling `Client.init()`.
 4. `Client.init()` initialises `DockSlots`, mounts the terminal, sets up the
    WebSocket and volume sliders, then calls `VirtualWindows.openAll()` — every
-   registered window opens immediately on page load.
+   registered window opens immediately on page load (unless `offOnLoad: true`).
 5. When the WebSocket receives a `!!GMCP(...)` message, `VirtualWindows.handleGMCP()`
    dispatches it to all matching handlers. Handlers whose associated window has
    been closed by the user are silently skipped.
@@ -95,6 +107,52 @@ many dock slots are occupied:
 | Neither slot has panels | 20px |
 | One slot has panels | 18px |
 | Both slots have panels | 16px |
+
+---
+
+## uiMenu — Context Menu Utility
+
+`uiMenu(event, items)` spawns a small styled context menu anchored near the
+cursor. Selecting an item sends the associated command via `Client.SendInput()`.
+Only one menu can be open at a time; opening a new one dismisses the previous.
+
+```js
+// items: Array<{ label: string, cmd: string }>
+canvas.addEventListener('click', function(e) {
+    uiMenu(e, [
+        { label: 'look longsword',   cmd: 'look longsword'   },
+        { label: 'remove longsword', cmd: 'remove longsword' },
+    ]);
+});
+```
+
+- Dismisses on any outside `mousedown`.
+- Positioned below-right of the click, flipping left/up if it would overflow
+  the viewport.
+- Styled to match the game UI palette.
+
+---
+
+## GameModal — Help/Content Overlay
+
+`window-modal.js` exposes `window.GameModal` before `DOMContentLoaded`. It
+renders content in a centered modal with a header, scrollable body, and footer.
+
+```js
+GameModal.open({
+    title:  'Help: cast',   // header text
+    body:   '...',          // content string
+    format: 'terminal',     // 'terminal' (ANSI via xterm.js) | 'html'
+});
+
+GameModal.close();
+```
+
+The modal also registers a GMCP handler for the `Help` namespace. Any
+`!!GMCP(Help {...})` payload from the server automatically opens the modal.
+
+The modal always opens scrolled to the top. Close with Esc, the × button, or
+clicking outside the panel.
 
 ---
 
@@ -126,7 +184,7 @@ new VirtualWindow(id, {
 
 Setting `offOnLoad: true` initialises `_win` to `false`, so `VirtualWindows.openAll()`
 skips the window entirely. It will not open until the user explicitly opens it (e.g.
-via a terminal command). Use this for optional diagnostic windows like Debug Log.
+via a terminal command).
 
 The `factory()` function must:
 - Create the content DOM element
@@ -163,9 +221,11 @@ VirtualWindows.register({
 - Multiple modules may register for the same namespace — all matching handlers
   are called.
 - The special namespace `'*'` matches every incoming GMCP payload regardless of
-  name. Use it for catch-all handlers such as debug loggers.
+  name.
 - If a handler's associated `window` is closed (`_win === false`), it is
   skipped entirely.
+- Pass `window: null` for handlers that have no associated window (e.g. the
+  modal's `Help` handler).
 
 **`Client.GMCPStructs`** is updated before `onGMCP` is called, so handlers
 always read the latest value from it directly rather than from the `body`
@@ -183,13 +243,156 @@ Client.SoundPlayer          // MP3Player instance (sound effects)
 Client.term                 // xterm.js Terminal instance
 Client.sendData(str)        // Send a string over the WebSocket; returns bool
 Client.SendInput(str)       // Send a command string to the server (alias for sendData)
-Client.GMCPRequest(ns)      // Ask the server to re-send a GMCP namespace (e.g. 'Room.Info')
+Client.GMCPRequest(ns, extra?)  // Ask the server to re-send a GMCP namespace; optional
+                                //   extra string is appended after a space (e.g.
+                                //   GMCPRequest('Suggestion', 'look ') sends
+                                //   !!GMCP(Suggestion look ))
 Client.GetGMCP(path)        // Read a value from GMCPStructs by dot-path (e.g. 'Char.Vitals')
+Client.getNetStats()        // Returns current network traffic counters (see below)
+Client.resetNetStats()      // Zeroes all network traffic counters (sent, received, GMCP in/out)
 Client.debugLog(msg)        // Log only when Client.debug === true
 Client.debug                // get/set — enable verbose logging from console
 Client.registerCommand(name, description, fn)   // Add a !terminal command
 Client.registerShortcut(code, command)          // Add a keyboard shortcut
 ```
+
+### Client.getNetStats()
+
+Returns a snapshot of network traffic since the last connection:
+
+```js
+{
+    totalBytesSent:     number,   // bytes sent over the WebSocket
+    totalBytesReceived: number,   // bytes received over the WebSocket
+    gmcpInBytes:        object,   // { [namespace]: bytes } — per-namespace GMCP receive totals
+    connectTime:        number,   // Date.now() value at last connect, or null if not connected
+}
+```
+
+All counters reset to zero on each new WebSocket connection. Used by the
+Settings → Stats tab for live traffic monitoring.
+
+---
+
+## GMCP Data — Char.Info
+
+`Client.GMCPStructs.Char.Info` contains the current player's identity. Key fields:
+
+```js
+{
+    account:   string,   // login username
+    name:      string,   // character name
+    class:     string,   // current profession/class
+    race:      string,   // character race
+    alignment: string,   // alignment string
+    level:     number,   // character level
+    role:      string,   // server-side role: 'user' | 'admin' | 'guest'
+}
+```
+
+`role` is always present (no `omitempty`). Use it to gate admin-only UI:
+
+```js
+var info = Client.GMCPStructs.Char && Client.GMCPStructs.Char.Info;
+if (info && info.role === 'admin') {
+    // show admin controls
+}
+```
+
+---
+
+## Settings Modal (webclient-pure.html)
+
+The settings modal has tabs managed by the inline `<script>` in
+`webclient-pure.html`. Tabs: **Volume**, **Windows**, **Triggers**, **Stats**.
+
+### Stats tab
+
+Displays live network traffic stats, refreshed every 500ms while the tab is
+visible. Powered by `Client.getNetStats()`. Contains:
+
+- **Connected for** — elapsed time since last WebSocket connect
+- **Sent / Received** — total bytes with per-second rate
+- **GMCP In** — collapsible section showing bytes received per GMCP namespace
+
+The interval starts when the Stats tab is activated and stops when switching
+away or closing the modal. A `MutationObserver` on the backdrop restarts the
+interval if the modal is reopened with Stats already active.
+
+---
+
+## Map Window (window-map.js)
+
+### Layout constants
+
+All visual parameters are declared at the top of the file and can be edited:
+
+```js
+ROOM_SIZE            // px — room square side length at zoom 1
+ROOM_GAP             // px — gap between room squares at zoom 1
+ZOOM_STEP            // multiplicative zoom step per button press
+ZOOM_MIN / ZOOM_MAX  // zoom scale bounds
+CENTER_EASE_DURATION // seconds to ease-pan to a new room (0 = instant snap)
+CONNECTION_WIDTH     // px — connection line stroke width
+ROOM_BORDER_WIDTH    // px — room square border stroke width
+SYMBOL_FONT_SIZE     // px — symbol text size at zoom 1
+SYMBOL_COLORS        // map of symbol string → fill color
+DEFAULT_ROOM_COLOR   // fallback fill color
+```
+
+### Camera easing
+
+When the player moves to a new room the map pans smoothly using
+`setCameraTarget(x, y)`, driven by `requestAnimationFrame` with a smoothstep
+curve over `CENTER_EASE_DURATION` seconds. Set `CENTER_EASE_DURATION = 0` to
+disable.
+
+### Admin click menu
+
+When `Char.Info.role === 'admin'`, clicking a room square on the canvas opens a
+`uiMenu` with:
+
+- `teleport <roomId>` — teleport to the room
+- `room info <roomId>` — display room info in the terminal
+
+---
+
+## Character Window (window-character.js)
+
+### Tabs
+
+| Tab | Content |
+|---|---|
+| Overview | Name · class · race (clickable → `Help race <name>`), alignment, stats grid (each stat clickable → `Help <statname>`), equipped items with hover tooltips and click menu |
+| Backpack | Carried items with hover tooltips and click menu |
+| Quests | Active quests with progress bars, click to expand description |
+| Skills | Skill levels with pip indicators, click → `Help <skillname>` GMCP request |
+| Jobs | Profession completion bars, click → `Help <jobname>` GMCP request |
+
+### Equipment click menu
+
+Clicking a worn item opens a `uiMenu` with `look <item>` and `remove <item>`.
+Empty slots produce no menu.
+
+### Backpack click menu
+
+Commands offered depend on item type/subtype from the GMCP payload:
+
+| type / subtype | commands |
+|---|---|
+| `weapon` or subtype `wearable` | `look`, `equip` |
+| subtype `edible` | `look`, `eat` |
+| subtype `drinkable` | `look`, `drink` |
+| subtype `usable` | `look`, `use` |
+| subtype `throwable` | `look`, `throw` |
+| type `readable` | `look`, `read` |
+| everything else | `look` only |
+
+---
+
+## Worth Window (window-status.js)
+
+Displays XP progress bar and gold (carried + bank). No tabs.
 
 ---
 
@@ -207,67 +410,34 @@ Every module is an IIFE to keep all state private. The pattern is:
 - `VirtualWindows.register()` at the bottom
 
 ```js
+/* global Client, VirtualWindow, VirtualWindows, injectStyles */
 'use strict';
 
 (function() {
 
     // -- Styles (injected once at script load time) --------------------------
-    injectStyles(`
-        #example-content {
-            color: #fff;
-            padding: 8px;
-            font-family: monospace;
-        }
-    `);
+    injectStyles(/* css string */);
 
     // -- DOM factory --------------------------------------------------------
     // Called once on first open. Must append to document.body.
-    function createDOM() {
-        const el = document.createElement('div');
-        el.id = 'example-content';
-        el.textContent = 'Waiting for data...';
-        document.body.appendChild(el);
-        return el;
-    }
+    function createDOM() { /* ... */ }
 
     // -- VirtualWindow instance ---------------------------------------------
     const win = new VirtualWindow('Example', {
         dock:          'right',   // 'left' | 'right' — enables docking
         defaultDocked: true,      // start docked on page load
         dockedHeight:  200,       // preferred height (px) when docked
-        factory() {
-            const el = createDOM();
-            return {
-                title:      'Example',
-                mount:      el,
-                background: '#1c6b60',
-                border:     1,
-                x:          'right',
-                y:          0,
-                width:      363,
-                height:     220,
-                header:     20,
-                bottom:     60,
-            };
-        },
+        factory() { /* ... */ },
     });
 
     // -- Update logic -------------------------------------------------------
-    function update() {
-        const data = Client.GMCPStructs.Some && Client.GMCPStructs.Some.Namespace;
-        if (!data) { return; }
-
-        win.open();
-        if (!win.isOpen()) { return; }
-
-        document.getElementById('example-content').textContent = data.someField;
-    }
+    function update() { /* ... */ }
 
     // -- Registration -------------------------------------------------------
     VirtualWindows.register({
         window:       win,
         gmcpHandlers: ['Some.Namespace', 'Some'],
-        onGMCP() { update(); },
+        onGMCP() { /* ... */ },
     });
 
 })();
@@ -278,7 +448,7 @@ Every module is an IIFE to keep all state private. The pattern is:
 Add one `<script>` tag in the appropriate dock comment block:
 
 ```html
-<!-- Left dock: character identity, party, communications -->
+<!-- Left dock -->
 <script src="{{ .CONFIG.FilePaths.WebCDNLocation }}/static/js/windows/window-example.js"></script>
 ```
 
@@ -301,6 +471,49 @@ gmcpHandlers: ['Char.Worth', 'Char'],
 
 Always read from `Client.GMCPStructs` inside `onGMCP` rather than from the
 `body` argument. The store is the source of truth and is always current.
+
+### Inbound GMCP requests (client → server)
+
+The web client sends GMCP requests to the server using the `!!GMCP(...)` wire
+format via `Client.GMCPRequest(identifier, extraData?)`. The server dispatches
+these in `HandleWebGMCP()` in `modules/gmcp/gmcp.go`. Currently handled
+inbound identifiers:
+
+| Identifier | Extra data | Description |
+|---|---|---|
+| `Room` / `Room.*` | — | Request a room state refresh |
+| `Char` / `Char.*` | — | Request a character state refresh |
+| `Party` | — | Request a party state refresh |
+| `World` / `World.*` | — | Request a world state refresh |
+| `Help` | topic string | Open the help modal for a topic |
+| `Suggestion` | partial input text | Request tab-completion suggestions for the given text |
+
+The `Suggestion` identifier is special: its extra data is **not** trimmed of
+whitespace, because a trailing space is meaningful (e.g. `"look "` requests
+argument completions rather than command-name completions).
+
+### Tab-completion (`Suggestion` GMCP)
+
+The web client has built-in tab-completion that mirrors telnet behaviour:
+
+1. Pressing **Tab** sends `!!GMCP(Suggestion <typed-text>)` to the server.
+2. The server calls `suggestions.GetAutoComplete()` and returns a
+   `Suggestion` payload:
+   ```json
+   { "input": "look ", "suggestions": ["look glowing battleaxe", "look chest"] }
+   ```
+3. The client sets the input field to the first suggestion, with the appended
+   portion **selected** so it can be deleted with a single backspace.
+4. Pressing **Tab** again cycles to the next suggestion without a server
+   round-trip.
+5. Pressing **Space** while a suggestion is active accepts it and appends a
+   space, allowing the user to continue typing further arguments.
+6. Any other edit (typing, paste, arrow-history navigation) clears the
+   suggestion state.
+
+This is handled entirely inside `webclient-core.js` (`_tabSug` state object,
+`_tabSugApply()`, `_onSuggestionGMCP()`) and does not require any window
+module involvement.
 
 ---
 
@@ -328,24 +541,25 @@ Always read from `Client.GMCPStructs` inside `onGMCP` rather than from the
 ### Adding a terminal command
 
 ```js
-Client.registerCommand('!example', 'Print example info', (input) => {
-    Client.term.writeln('Example command ran.');
-    return true;  // return true to consume the input (clears the field)
-});
+Client.registerCommand('!example', 'Print example info', (input) => { /* ... */ });
 ```
 
 Commands are matched against the exact input string before it is sent to the
 server. Return `true` to prevent the string from being sent.
 
+The only built-in terminal command is `!gmcp` — removed. The command table is
+now empty by default; window modules add entries via `registerCommand`.
+
 ### Adding a keyboard shortcut
 
 ```js
-// Sends 'look' when the user presses Tab with an empty input field.
-Client.registerShortcut('Tab', 'look');
+// Sends 'map' when the user presses F11 with an empty input field.
+Client.registerShortcut('F11', 'map');
 ```
 
-The `code` value is a `KeyboardEvent.code` string (e.g. `'KeyM'`, `'Tab'`,
-`'F11'`). Shortcuts only fire when the command input field is empty.
+The `code` value is a `KeyboardEvent.code` string (e.g. `'KeyM'`, `'F11'`).
+Shortcuts only fire when the command input field is empty. `Tab` is reserved
+for tab-completion and cannot be used as a shortcut.
 
 ### Adding a comm channel tab
 
@@ -356,3 +570,15 @@ In `window-comm.js`, add an entry to the `CHANNELS` array:
 ```
 
 No other changes are required. The tab and its panel are created automatically.
+
+### Adding a Settings tab
+
+The settings modal tabs are defined in `webclient-pure.html`. To add a new tab:
+
+1. Add a `<button class="settings-tab-btn" data-tab="tab-foo">Foo</button>` to
+   `#settings-tab-bar`.
+2. Add a `<div class="settings-tab-panel" id="tab-foo">...</div>` inside
+   `#settings-tab-body`.
+3. If the tab needs activation logic (e.g. a live-update interval), add a
+   handler inside the `tabBar.addEventListener('click', ...)` block within
+   `DOMContentLoaded`.
