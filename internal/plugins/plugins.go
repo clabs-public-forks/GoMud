@@ -28,12 +28,26 @@ import (
 
 // pluginRegistry holds all plugins, provides a `fs.ReadFileFS` interface
 
+// ModuleAdminRegistrar is implemented by internal/web and provided to plugins
+// via SetAdminRegistrar. This breaks the import cycle between web and plugins.
+type ModuleAdminRegistrar interface {
+	RegisterAdminPage(name, slug, htmlContent string, addToNav bool, navGroup, navParent string, dataFunc func(*http.Request) map[string]any)
+	RegisterAdminAPIEndpoint(method, slug string, handler func(*http.Request) (int, bool, any))
+}
+
 var (
-	registrationOpen = true
-	registry         = pluginRegistry{}
-	txtCleanRegex    = regexp.MustCompile(`[^a-zA-Z0-9\._]+`)
-	writeFolderPath  = os.TempDir()
+	registrationOpen     = true
+	registry             = pluginRegistry{}
+	txtCleanRegex        = regexp.MustCompile(`[^a-zA-Z0-9\._]+`)
+	writeFolderPath      = os.TempDir()
+	moduleAdminRegistrar ModuleAdminRegistrar
 )
+
+// SetAdminRegistrar provides the callback that plugins.Load() uses to register
+// module admin pages and API endpoints without importing web directly.
+func SetAdminRegistrar(r ModuleAdminRegistrar) {
+	moduleAdminRegistrar = r
+}
 
 const (
 	dataFilesFolder         = `datafiles` + string(filepath.Separator)
@@ -64,6 +78,8 @@ type Plugin struct {
 	files PluginFiles
 
 	Web WebConfig
+
+	roomTags []string
 }
 
 func New(name string, version string) *Plugin {
@@ -245,6 +261,24 @@ func (p *Plugin) Requires(modname string, modversion string) {
 	reg, _ := regexp.Compile("[^a-zA-Z0-9_]+")
 	modname = reg.ReplaceAllString(modname, "_")
 	p.dependencies = append(p.dependencies, dependency{modname, modversion})
+}
+
+// ReserveTags registers room tags that this plugin recognises, so that
+// "room tags" can list them alongside the owning module name.
+func (p *Plugin) ReserveTags(tags ...string) {
+	p.roomTags = append(p.roomTags, tags...)
+}
+
+// GetRegisteredRoomTags returns a map of plugin name to the room tags it has
+// reserved, containing only plugins that reserved at least one tag.
+func GetRegisteredRoomTags() map[string][]string {
+	result := map[string][]string{}
+	for _, p := range registry {
+		if len(p.roomTags) > 0 {
+			result[p.name] = append([]string(nil), p.roomTags...)
+		}
+	}
+	return result
 }
 
 func (p *Plugin) ExportFunction(stringId string, f any) {
@@ -480,6 +514,25 @@ func Load(dataFilesPath string) {
 				}
 				configs.AddOverlayOverrides(overlayMap)
 
+			}
+		}
+
+		// Register module admin pages and API endpoints.
+		if moduleAdminRegistrar != nil {
+			for _, page := range p.Web.adminPages {
+				htmlContent := ""
+				if b, err := p.files.ReadFile(page.HTMLFile); err == nil {
+					htmlContent = string(b)
+				} else {
+					mudlog.Error("plugins", "admin page html not found", page.HTMLFile, "plugin", p.name)
+				}
+				moduleAdminRegistrar.RegisterAdminPage(page.Name, page.Slug, htmlContent, page.AddToNav, page.NavGroup, page.NavParent, page.DataFunction)
+			}
+			for _, route := range p.Web.adminAPIRoutes {
+				route := route // capture
+				moduleAdminRegistrar.RegisterAdminAPIEndpoint(route.Method, route.Slug, func(r *http.Request) (int, bool, any) {
+					return route.Handler(r)
+				})
 			}
 		}
 

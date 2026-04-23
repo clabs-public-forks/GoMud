@@ -186,6 +186,7 @@ func main() {
 	templates.RegisterFS(plugins.GetPluginRegistry())
 	items.RegisterFS(plugins.GetPluginRegistry())
 	usercommands.AddFunctionExporter(plugins.GetPluginRegistry())
+	usercommands.SetRoomTagProvider(plugins.GetRegisteredRoomTags)
 
 	inputhandlers.AddIACHandler(plugins.GetPluginRegistry())
 	inputhandlers.AddTextPrefixHandler(plugins.GetPluginRegistry())
@@ -238,7 +239,7 @@ func main() {
 	isCopyover := flags.CopyoverFd() >= 0
 
 	if !isCopyover {
-		idx := users.NewUserIndex()
+		idx := users.InitUserIndex()
 		if !idx.Exists() {
 			// Since it doesn't exist yet, that's a good indication we should do a quick format migration check
 			users.DoUserMigrations()
@@ -268,6 +269,10 @@ func main() {
 	scripting.Setup(int(c.Scripting.LoadTimeoutMs), int(c.Scripting.RoomTimeoutMs))
 
 	mudlog.Info(`========================`)
+
+	// Wire module admin registrar before loading plugins so that any admin
+	// pages and API endpoints registered by modules are available immediately.
+	plugins.SetAdminRegistrar(web.GetAdminRegistrar())
 
 	// Trigger the load plugins event
 	plugins.Load(
